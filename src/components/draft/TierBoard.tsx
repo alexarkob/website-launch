@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { PlayerAvatar } from "./PlayerAvatar";
 import { PlayerMarks } from "./PlayerMarks";
-import { PositionBadge } from "./PositionBadge";
 import {
   POSITION_LABELS,
   POSITIONS,
@@ -201,55 +200,59 @@ function TierPlayerRow({
 
   return (
     <li
-      className={`player-row rounded px-2 py-1.5 text-sm ${isDrafted ? "is-drafted" : ""}`}
+      className={`player-row min-w-0 overflow-hidden rounded px-2 py-1.5 text-sm ${isDrafted ? "is-drafted" : ""}`}
       data-tier={tier ?? undefined}
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-start gap-2">
         <PlayerAvatar player={player} size={28} />
-        <span className="min-w-0 flex-1 font-medium">{player.name}</span>
-        <PositionBadge position={player.position} />
-        <span className="text-xs text-muted">
-          {player.team} · ADP {player.adp.toFixed(1)}
-          {player.projectedPoints != null
-            ? ` · ${player.projectedPoints.toFixed(1)}`
-            : ""}
-        </span>
-        <select
-          className="rounded border border-paper-deep bg-paper px-1 py-0.5 text-xs"
-          value={tier ?? ""}
-          onChange={(e) => {
-            const v = e.target.value;
-            onSetTier(player.id, v ? (Number(v) as Tier) : null);
-          }}
-          aria-label={`Tier for ${player.name}`}
-        >
-          <option value="">—</option>
-          {TIERS.map((t) => (
-            <option key={t} value={t}>
-              T{t}
-            </option>
-          ))}
-        </select>
-        <PlayerMarks
-          marks={marks}
-          editable
-          playerName={player.name}
-          onToggle={(mark) => onToggleMark(player.id, mark)}
-        />
-        <button
-          type="button"
-          className="text-xs text-signal hover:underline"
-          onClick={onToggleNote}
-        >
-          {note ? "Note" : "+"}
-        </button>
-        <button
-          type="button"
-          onClick={() => onToggleDrafted(player.id)}
-          className="rounded border border-ink/15 px-1.5 py-0.5 text-xs hover:bg-ink/5"
-        >
-          {isDrafted ? "Undo" : "Out"}
-        </button>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium leading-tight">{player.name}</div>
+          <div className="mt-0.5 truncate text-xs text-muted">
+            {player.team} · ADP {player.adp.toFixed(1)}
+            {player.projectedPoints != null
+              ? ` · ${player.projectedPoints.toFixed(1)}`
+              : ""}
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            <select
+              className={`tier-select ${tier ? "tier-badge is-set" : ""}`}
+              data-tier={tier ?? undefined}
+              value={tier ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                onSetTier(player.id, v ? (Number(v) as Tier) : null);
+              }}
+              aria-label={`Tier for ${player.name}`}
+            >
+              <option value="">—</option>
+              {TIERS.map((t) => (
+                <option key={t} value={t}>
+                  T{t}
+                </option>
+              ))}
+            </select>
+            <PlayerMarks
+              marks={marks}
+              editable
+              playerName={player.name}
+              onToggle={(mark) => onToggleMark(player.id, mark)}
+            />
+            <button
+              type="button"
+              className="text-xs text-signal hover:underline"
+              onClick={onToggleNote}
+            >
+              {note ? "Note" : "+"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleDrafted(player.id)}
+              className="rounded border border-ink/15 px-1.5 py-0.5 text-xs hover:bg-ink/5"
+            >
+              {isDrafted ? "Undo" : "Out"}
+            </button>
+          </div>
+        </div>
       </div>
       {noteOpen ? (
         <textarea
