@@ -1,0 +1,64 @@
+---
+import { site } from "../content/site";
+
+const secondaryLinks = [
+  site.contact.email
+    ? { label: "Email", href: `mailto:${site.contact.email}` }
+    : null,
+  site.contact.linkedin
+    ? { label: "LinkedIn", href: site.contact.linkedin }
+    : null,
+  site.contact.github
+    ? { label: "GitHub", href: site.contact.github }
+    : null,
+].filter(Boolean) as { label: string; href: string }[];
+
+const resumeHref = site.contact.resume;
+---
+
+<section id="contact" class="relative border-t border-ink/10 bg-ink text-paper">
+  <div class="mx-auto max-w-6xl px-6 py-24 md:px-10 md:py-32">
+    <div class="reveal max-w-2xl">
+      <p class="text-sm font-medium uppercase tracking-[0.22em] text-signal-bright">Contact</p>
+      <h2 class="font-display mt-3 text-4xl font-semibold tracking-tight md:text-5xl">
+        Let's talk
+      </h2>
+      <p class="mt-4 text-lg text-paper/70">
+        Open to conversations about strategy, growth, and building useful products. Try the demos above, then reach out.
+      </p>
+      <div class="mt-10 flex flex-wrap items-center gap-4">
+        {
+          secondaryLinks.map((link) => (
+            <a
+              href={link.href}
+              target={link.href.startsWith("mailto:") ? undefined : "_blank"}
+              rel={link.href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
+              class="inline-flex items-center justify-center rounded-sm border border-paper/25 px-5 py-2.5 text-sm font-semibold text-paper transition hover:border-signal-bright hover:text-signal-bright"
+            >
+              {link.label}
+            </a>
+          ))
+        }
+        {
+          resumeHref && (
+            <a
+              href={resumeHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              download="Arko-Bhattacharyya-Resume-Aug-2026.pdf"
+              class="inline-flex items-center justify-center rounded-sm bg-signal-bright px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-paper hover:text-ink"
+            >
+              My Resume
+            </a>
+          )
+        }
+      </div>
+    </div>
+  </div>
+  <footer class="border-t border-paper/10 px-6 py-8 md:px-10">
+    <div class="mx-auto flex max-w-6xl flex-col gap-2 text-sm text-paper/45 sm:flex-row sm:items-center sm:justify-between">
+      <p>© {new Date().getFullYear()} {site.name}</p>
+      <p>arkoalexbhattacharyya.org</p>
+    </div>
+  </footer>
+</section>

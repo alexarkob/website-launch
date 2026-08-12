@@ -1,0 +1,23 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import DraftApp from "../../components/draft/DraftApp";
+import "../../styles/draft.css";
+---
+
+<Layout
+  title="Fantasy Draft Helper — Free 8-team PPR draft board"
+  description="Free 8-team PPR fantasy football draft helper with live ADP, custom tiers, private notes, and printable cheat sheets. Your prep stays on your device."
+>
+  <script is:inline>
+    try {
+      var theme = localStorage.getItem("ff-draft-theme");
+      document.documentElement.setAttribute(
+        "data-draft-theme",
+        theme === "dark" ? "dark" : "light",
+      );
+    } catch (e) {
+      document.documentElement.setAttribute("data-draft-theme", "light");
+    }
+  </script>
+  <DraftApp client:load />
+</Layout>

@@ -1,0 +1,93 @@
+---
+import { site } from "../content/site";
+---
+
+<section id="projects" class="relative border-t border-ink/10 bg-paper">
+  <div class="mx-auto max-w-6xl px-6 py-24 md:px-10 md:py-32">
+    <div class="reveal max-w-2xl">
+      <p class="text-sm font-medium uppercase tracking-[0.22em] text-signal">Selected work</p>
+      <h2 class="font-display mt-3 text-4xl font-semibold tracking-tight text-ink md:text-5xl">
+        Products I'm building
+      </h2>
+      <p class="mt-4 text-lg text-muted">
+        Built end-to-end—from data pipelines and API integrations to polished interfaces you can try now.
+      </p>
+    </div>
+
+    <div class="mt-16 space-y-24 md:mt-24 md:space-y-32">
+      {
+        site.projects.map((project, index) => {
+          return (
+            <article
+              id={project.id}
+              class:list={["reveal grid gap-10 md:grid-cols-12 md:gap-12", index % 2 === 1 && "md:[&>*:first-child]:order-2"]}
+              style={`transition-delay: ${index * 60}ms`}
+            >
+              <div class="md:col-span-5">
+                <p class="text-sm font-medium uppercase tracking-[0.18em] text-signal">
+                  0{index + 1}
+                </p>
+                <h3
+                  class:list={[
+                    "mt-3 text-3xl font-semibold tracking-tight text-ink md:text-4xl",
+                    project.id === "fantasy-draft" ? "font-sans" : "font-display",
+                  ]}
+                >
+                  {project.name}
+                </h3>
+                <p class="mt-2 text-lg text-ink-soft">{project.tagline}</p>
+                <div class="mt-8 flex flex-wrap gap-3">
+                  {project.comingSoon ? (
+                    <span class="inline-flex items-center justify-center rounded-sm border border-ink/15 bg-paper-deep/80 px-5 py-2.5 text-sm font-semibold text-muted">
+                      Coming soon
+                    </span>
+                  ) : (
+                    project.demoUrl && (
+                      <a
+                        href={project.demoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center justify-center rounded-sm bg-signal px-5 py-2.5 text-sm font-semibold text-paper transition hover:bg-signal-bright"
+                      >
+                        Live demo
+                      </a>
+                    )
+                  )}
+                  {project.github && (
+                    <a
+                      href={project.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center justify-center rounded-sm border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-signal hover:text-signal"
+                    >
+                      GitHub
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div class="md:col-span-7">
+                <p class="text-lg leading-relaxed text-muted">{project.summary}</p>
+                <ul class="mt-8 space-y-3">
+                  {project.highlights.map((item) => (
+                    <li class="flex gap-3 text-ink-soft">
+                      <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-signal" aria-hidden="true" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div class="mt-8 flex flex-wrap gap-2">
+                  {project.stack.map((tech) => (
+                    <span class="border border-ink/10 bg-paper-deep/60 px-3 py-1 text-xs font-medium tracking-wide text-muted">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </article>
+          );
+        })
+      }
+    </div>
+  </div>
+</section>
