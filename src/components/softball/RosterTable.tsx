@@ -72,6 +72,70 @@ function togglePosition(player: Player, position: Position): Player {
   };
 }
 
+function PresentToggle({
+  player,
+  onPatch,
+}: {
+  player: Player;
+  onPatch: (next: Player) => void;
+}) {
+  return (
+    <label className="sb-toggle sb-toggle--compact">
+      <input
+        type="checkbox"
+        checked={player.present}
+        onChange={(e) => onPatch({ ...player, present: e.target.checked })}
+      />
+      <span>In</span>
+    </label>
+  );
+}
+
+function NameInput({
+  player,
+  onPatch,
+}: {
+  player: Player;
+  onPatch: (next: Player) => void;
+}) {
+  return (
+    <input
+      value={player.name}
+      onChange={(e) => onPatch({ ...player, name: e.target.value })}
+      placeholder="Name"
+      aria-label="Player name"
+    />
+  );
+}
+
+function PositionChips({
+  player,
+  onPatch,
+}: {
+  player: Player;
+  onPatch: (next: Player) => void;
+}) {
+  return (
+    <div className="sb-pos-row">
+      {POSITIONS.map((position) => (
+        <label
+          key={position}
+          data-pos={position}
+          className={player.positions.includes(position) ? "is-on" : ""}
+          title={POSITION_LABELS[position]}
+        >
+          <input
+            type="checkbox"
+            checked={player.positions.includes(position)}
+            onChange={() => onPatch(togglePosition(player, position))}
+          />
+          {position}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function PlayerRow({
   player,
   onPatch,
@@ -84,22 +148,10 @@ function PlayerRow({
   return (
     <tr className={player.present ? "" : "is-out"}>
       <td className="sb-col-present">
-        <label className="sb-toggle sb-toggle--compact">
-          <input
-            type="checkbox"
-            checked={player.present}
-            onChange={(e) => onPatch({ ...player, present: e.target.checked })}
-          />
-          <span>In</span>
-        </label>
+        <PresentToggle player={player} onPatch={onPatch} />
       </td>
       <td className="sb-col-name">
-        <input
-          value={player.name}
-          onChange={(e) => onPatch({ ...player, name: e.target.value })}
-          placeholder="Name"
-          aria-label="Player name"
-        />
+        <NameInput player={player} onPatch={onPatch} />
       </td>
       <td className="sb-col-gender">
         <GenderToggle
@@ -108,23 +160,7 @@ function PlayerRow({
         />
       </td>
       <td className="sb-col-positions">
-        <div className="sb-pos-row">
-          {POSITIONS.map((position) => (
-            <label
-              key={position}
-              data-pos={position}
-              className={player.positions.includes(position) ? "is-on" : ""}
-              title={POSITION_LABELS[position]}
-            >
-              <input
-                type="checkbox"
-                checked={player.positions.includes(position)}
-                onChange={() => onPatch(togglePosition(player, position))}
-              />
-              {position}
-            </label>
-          ))}
-        </div>
+        <PositionChips player={player} onPatch={onPatch} />
       </td>
       <td className="sb-col-song">
         <SongPicker
@@ -142,6 +178,38 @@ function PlayerRow({
   );
 }
 
+function PlayerCard({
+  player,
+  onPatch,
+  onRemove,
+}: {
+  player: Player;
+  onPatch: (next: Player) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <article className={`sb-player-card${player.present ? "" : " is-out"}`}>
+      <div className="sb-player-card__top">
+        <PresentToggle player={player} onPatch={onPatch} />
+        <NameInput player={player} onPatch={onPatch} />
+        <GenderToggle
+          value={player.gender}
+          onChange={(gender) => onPatch({ ...player, gender })}
+        />
+        <button type="button" className="sb-btn sb-btn--ghost" onClick={onRemove} aria-label="Remove player">
+          ×
+        </button>
+      </div>
+      <PositionChips player={player} onPatch={onPatch} />
+      <SongPicker
+        compact
+        song={player.walkUpSong}
+        onChange={(walkUpSong) => onPatch({ ...player, walkUpSong })}
+      />
+    </article>
+  );
+}
+
 export function RosterTable({ roster, onChange, onAdd }: Props) {
   const present = roster.filter((player) => player.present);
   const absent = roster.filter((player) => !player.present);
@@ -154,34 +222,46 @@ export function RosterTable({ roster, onChange, onAdd }: Props) {
     onChange(roster.filter((player) => player.id !== id));
   }
 
-  function renderTable(players: Player[]) {
+  function renderPlayers(players: Player[]) {
     return (
-      <div className="sb-table-wrap">
-        <table className="sb-roster-table">
-          <thead>
-            <tr>
-              <th>Here</th>
-              <th>Name</th>
-              <th>G</th>
-              <th>Positions</th>
-              <th>Walk-up song</th>
-              <th>
-                <span className="sb-sr">Remove</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {players.map((player) => (
-              <PlayerRow
-                key={player.id}
-                player={player}
-                onPatch={(next) => patchAt(player.id, next)}
-                onRemove={() => remove(player.id)}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <>
+        <div className="sb-table-wrap sb-roster-desktop">
+          <table className="sb-roster-table">
+            <thead>
+              <tr>
+                <th>Here</th>
+                <th>Name</th>
+                <th>G</th>
+                <th>Positions</th>
+                <th>Walk-up song</th>
+                <th>
+                  <span className="sb-sr">Remove</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {players.map((player) => (
+                <PlayerRow
+                  key={player.id}
+                  player={player}
+                  onPatch={(next) => patchAt(player.id, next)}
+                  onRemove={() => remove(player.id)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="sb-roster-cards">
+          {players.map((player) => (
+            <PlayerCard
+              key={player.id}
+              player={player}
+              onPatch={(next) => patchAt(player.id, next)}
+              onRemove={() => remove(player.id)}
+            />
+          ))}
+        </div>
+      </>
     );
   }
 
@@ -198,12 +278,12 @@ export function RosterTable({ roster, onChange, onAdd }: Props) {
       {present.length === 0 ? (
         <p className="sb-muted">Add players, then uncheck Here if someone is out this week.</p>
       ) : (
-        renderTable(present)
+        renderPlayers(present)
       )}
       {absent.length > 0 && (
         <details className="sb-out" open={absent.length < 8}>
           <summary>Out this week ({absent.length})</summary>
-          {renderTable(absent)}
+          {renderPlayers(absent)}
         </details>
       )}
     </div>

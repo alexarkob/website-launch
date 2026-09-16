@@ -1,22 +1,14 @@
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { battingRuleWarning } from "../../lib/softball/batting";
 import { playersById, type Player, type TeamState, type WalkUpSong } from "../../lib/softball/types";
+import { useSoftballDndSensors } from "./useSoftballDndSensors";
 
 interface Props {
   state: TeamState;
@@ -90,10 +82,7 @@ export function BattingOrder({
   const warning = battingRuleWarning(ordered, state.roster);
   const items = state.battingOrder.map((playerId, index) => `${playerId}::${index}`);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  const { sensors, autoScroll } = useSoftballDndSensors();
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -115,7 +104,12 @@ export function BattingOrder({
       {ordered.length === 0 ? (
         <p className="sb-muted">Generate an order from everyone marked present this week.</p>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          autoScroll={autoScroll}
+          onDragEnd={handleDragEnd}
+        >
           <SortableContext items={items} strategy={verticalListSortingStrategy}>
             <ol className="sb-order">
               {state.battingOrder.map((playerId, index) => (

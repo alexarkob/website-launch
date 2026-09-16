@@ -1,14 +1,12 @@
 import { useState } from "react";
 import {
   DndContext,
-  PointerSensor,
   useDroppable,
   useDraggable,
-  useSensor,
-  useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { useSoftballDndSensors } from "./useSoftballDndSensors";
 import {
   inningsPlayed,
   menOnField,
@@ -40,10 +38,15 @@ const VIEW_KEY = "sb-fielding-view";
 
 function readView(): FieldingView {
   try {
-    return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "diamond";
+    const stored = localStorage.getItem(VIEW_KEY);
+    if (stored === "list" || stored === "diamond") return stored;
   } catch {
-    return "diamond";
+    /* ignore quota / private mode */
   }
+  if (typeof window !== "undefined" && window.matchMedia("(max-width: 700px)").matches) {
+    return "list";
+  }
+  return "diamond";
 }
 
 /** Percent placement on the diamond, catcher's view looking out. */
@@ -69,17 +72,23 @@ function PlayerChip({ player, compact = false }: { player: Player; compact?: boo
     opacity: isDragging ? 0.6 : 1,
   };
   return (
-    <button
-      type="button"
+    <div
       ref={setNodeRef}
       style={style}
-      className={`sb-chip${compact ? " is-compact" : ""} ${player.gender === "female" ? "is-f" : "is-m"}`}
-      {...listeners}
-      {...attributes}
+      className={`sb-chip${compact ? " is-compact" : ""} ${player.gender === "female" ? "is-f" : "is-m"}${isDragging ? " is-dragging" : ""}`}
     >
+      <button
+        type="button"
+        className="sb-grip"
+        {...attributes}
+        {...listeners}
+        aria-label={`Drag ${player.name || "player"}`}
+      >
+        ::
+      </button>
       <span>{player.name || "Unnamed"}</span>
       <small>{player.gender === "female" ? "F" : "M"}</small>
-    </button>
+    </div>
   );
 }
 
@@ -183,7 +192,7 @@ function InningBoard({
   onChange: (next: FieldingInning) => void;
 }) {
   const byId = playersById(roster);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const { sensors, autoScroll } = useSoftballDndSensors();
   const men = menOnField(inning, roster);
   const unpreferred = unpreferredPlacements(inning, roster);
 
@@ -222,7 +231,7 @@ function InningBoard({
           </p>
         )}
       </header>
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} autoScroll={autoScroll} onDragEnd={handleDragEnd}>
         <div className={`sb-diamond${layout === "list" ? " is-list" : ""}`}>
           {layout === "diamond" && <DiamondField uid={`inning-${index}`} />}
           {POSITIONS.map((position) => {

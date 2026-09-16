@@ -127,7 +127,7 @@ export default function SoftballApp() {
   }
 
   return (
-    <div className="sb-app">
+    <div className={`sb-app${team && state ? " sb-app--in" : ""}`}>
       <header className="sb-hero">
         <p className="sb-hero__eyebrow">
           <a href="/">← Portfolio</a>

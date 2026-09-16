@@ -47,11 +47,11 @@ export function SongPicker({ song, onChange, compact = false }: Props) {
   }, [query]);
 
   useEffect(() => {
-    function onDoc(event: MouseEvent) {
+    function onDoc(event: PointerEvent) {
       if (!boxRef.current?.contains(event.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
   }, []);
 
   if (song) {

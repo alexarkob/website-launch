@@ -24,6 +24,9 @@ html[data-sb-theme="dark"] {
   --sb-pos-RC: #3ee0f0;
   --sb-pos-RF: #6ba8ff;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   color: var(--color-ink);
   background:
     radial-gradient(
@@ -50,8 +53,8 @@ html[data-sb-theme="dark"] {
   max-width: 88rem;
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
+  padding-left: max(1.25rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
 }
 
 .sb-hero {
@@ -147,7 +150,8 @@ html[data-sb-theme="dark"] {
 .sb-label select,
 .sb-song-picker input,
 .sb-roster-table input,
-.sb-roster-table select {
+.sb-roster-table select,
+.sb-player-card input:not([type="checkbox"]) {
   font: inherit;
   font-weight: 400;
   padding: 0.4rem 0.55rem;
@@ -172,6 +176,7 @@ html[data-sb-theme="dark"] {
   font-size: 0.9rem;
   text-decoration: none;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .sb-btn:disabled {
@@ -202,6 +207,7 @@ html[data-sb-theme="dark"] {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .sb-banner {
@@ -233,6 +239,8 @@ html[data-sb-theme="dark"] {
   gap: 0.4rem;
   padding-bottom: 1rem;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sb-tabs button {
@@ -243,6 +251,7 @@ html[data-sb-theme="dark"] {
   border-radius: 999px;
   background: transparent;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .sb-tabs button.is-active {
@@ -276,6 +285,7 @@ html[data-sb-theme="dark"] {
   background: transparent;
   color: var(--color-muted);
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .sb-view-toggle button.is-active {
@@ -297,6 +307,8 @@ html[data-sb-theme="dark"] {
 
 .sb-table-wrap {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--sb-line);
   border-radius: 0.4rem;
   background: var(--sb-surface);
@@ -383,6 +395,7 @@ html[data-sb-theme="dark"] {
   background: var(--sb-surface-2);
   color: color-mix(in srgb, var(--color-muted) 80%, transparent);
   cursor: pointer;
+  touch-action: manipulation;
   transition:
     color 0.15s ease,
     border-color 0.15s ease,
@@ -502,6 +515,7 @@ html[data-sb-theme="dark"] {
   font-size: 0.68rem;
   font-weight: 700;
   cursor: pointer;
+  touch-action: manipulation;
   color: var(--color-muted);
   background: var(--sb-surface-2);
 }
@@ -611,6 +625,8 @@ html[data-sb-theme="dark"] {
   border-radius: 0.35rem;
   max-height: 16rem;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
 }
 
@@ -654,6 +670,9 @@ html[data-sb-theme="dark"] {
   border-radius: 0.35rem;
   border: 1px solid var(--sb-line);
   background: var(--sb-surface);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .sb-tile.is-f {
@@ -666,15 +685,32 @@ html[data-sb-theme="dark"] {
 
 .sb-tile.is-dragging {
   box-shadow: 0 8px 20px rgb(0 0 0 / 40%);
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .sb-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin: -0.4rem 0;
+  padding: 0;
   border: 0;
   background: transparent;
   cursor: grab;
   color: var(--color-muted);
   font-weight: 700;
   letter-spacing: 0.08em;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sb-grip:active {
+  cursor: grabbing;
 }
 
 .sb-tile__num {
@@ -891,15 +927,23 @@ a.sb-tile__song span {
 .sb-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.55rem;
+  gap: 0.2rem;
+  padding: 0.2rem 0.55rem 0.2rem 0.15rem;
   border-radius: 999px;
   border: 1px solid var(--sb-line);
   background: var(--sb-surface-2);
   color: inherit;
   font: inherit;
   font-weight: 600;
-  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sb-chip .sb-grip {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin: 0;
 }
 
 .sb-chip.is-f {
@@ -917,10 +961,16 @@ a.sb-tile__song span {
 .sb-chip.is-compact {
   max-width: 100%;
   width: 100%;
-  justify-content: center;
-  padding: 0.2rem 0.4rem;
+  justify-content: flex-start;
+  padding: 0.1rem 0.35rem 0.1rem 0.05rem;
   font-size: 0.72rem;
-  gap: 0.22rem;
+  gap: 0.1rem;
+}
+
+.sb-chip.is-compact .sb-grip {
+  min-width: 1.85rem;
+  min-height: 1.85rem;
+  font-size: 0.7rem;
 }
 
 .sb-chip.is-compact span {
@@ -959,8 +1009,149 @@ a.sb-tile__song span {
   font-size: 0.9rem;
 }
 
+.sb-roster-cards {
+  display: none;
+}
+
+.sb-player-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.85rem;
+  border: 1px solid var(--sb-line);
+  border-radius: 0.4rem;
+  background: var(--sb-surface);
+}
+
+.sb-player-card.is-out {
+  opacity: 0.62;
+}
+
+.sb-player-card__top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.sb-player-card__top > input {
+  min-width: 0;
+  width: 100%;
+}
+
+.sb-player-card .sb-pos-row {
+  flex-wrap: wrap;
+}
+
+.sb-player-card .sb-song-picker.is-compact input,
+.sb-player-card .sb-song--picked.is-compact {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.sb-player-card .sb-song--picked.is-compact strong {
+  max-width: none;
+}
+
+.sb-chip.is-dragging {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .sb-roster,
 .sb-batting,
 .sb-fielding {
   padding-bottom: 3.5rem;
 }
+
+@media (max-width: 699px) {
+  .sb-app input:not([type="checkbox"]):not([type="radio"]),
+  .sb-app select,
+  .sb-app textarea {
+    font-size: 16px;
+  }
+
+  .sb-app--in .sb-hero {
+    padding-top: 1rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .sb-app--in .sb-hero h1 {
+    font-size: 1.85rem;
+  }
+
+  .sb-app--in .sb-hero__lede {
+    display: none;
+  }
+
+  .sb-app--in .sb-hero__eyebrow {
+    margin-bottom: 0.4rem;
+  }
+
+  .sb-app--in .sb-hero__meta {
+    margin-top: 0.7rem;
+  }
+
+  .sb-roster-desktop {
+    display: none;
+  }
+
+  .sb-roster-cards {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .sb-gender__btn {
+    width: 2.4rem;
+    height: 2.75rem;
+  }
+
+  .sb-pos-row label {
+    min-width: 2.4rem;
+    min-height: 2.2rem;
+    padding: 0.35rem 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .sb-tile {
+    grid-template-columns: 2.75rem auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "grip num name tag"
+      "grip song song song";
+    gap: 0.2rem 0.45rem;
+  }
+
+  .sb-tile .sb-grip {
+    grid-area: grip;
+    align-self: stretch;
+    margin: -0.65rem 0 -0.65rem -0.75rem;
+  }
+
+  .sb-tile__num {
+    grid-area: num;
+  }
+
+  .sb-tile__name {
+    grid-area: name;
+  }
+
+  .sb-tile__tag {
+    grid-area: tag;
+  }
+
+  .sb-tile__song {
+    grid-area: song;
+    justify-self: start;
+    max-width: 100%;
+  }
+
+  .sb-chip.is-compact .sb-grip {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .sb-tabs button {
+    min-height: 2.75rem;
+  }
+}
+
