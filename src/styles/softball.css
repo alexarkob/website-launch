@@ -198,6 +198,66 @@ html[data-sb-theme="dark"] {
   background: transparent;
 }
 
+.sb-btn--danger {
+  background: color-mix(in srgb, #b91c1c 88%, #fff);
+  border-color: #b91c1c;
+  color: #fff;
+}
+
+.sb-btn--danger:hover {
+  background: #991b1b;
+}
+
+.sb-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  background: rgb(0 0 0 / 55%);
+}
+
+.sb-modal__box {
+  width: min(100%, 22rem);
+  padding: 1.15rem 1.2rem 1.1rem;
+  border: 1px solid var(--sb-line);
+  border-radius: 0.45rem;
+  background: var(--sb-surface);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 45%);
+}
+
+.sb-modal__box h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.sb-modal__name {
+  margin: 0.45rem 0 0;
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.sb-modal__box p {
+  margin: 0.55rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.sb-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 1.05rem;
+}
+
+.sb-modal__actions .sb-btn {
+  min-height: 2.75rem;
+  min-width: 5.5rem;
+}
+
 .sb-linkish {
   justify-self: start;
   padding: 0;

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { POSITION_LABELS, POSITIONS, type Player, type Position } from "../../lib/softball/types";
 import { SongPicker } from "./SongPicker";
 
@@ -213,14 +214,26 @@ function PlayerCard({
 export function RosterTable({ roster, onChange, onAdd }: Props) {
   const present = roster.filter((player) => player.present);
   const absent = roster.filter((player) => !player.present);
+  const [pendingDelete, setPendingDelete] = useState<Player | null>(null);
 
   function patchAt(id: string, next: Player) {
     onChange(roster.map((player) => (player.id === id ? next : player)));
   }
 
-  function remove(id: string) {
-    onChange(roster.filter((player) => player.id !== id));
+  function confirmRemove() {
+    if (!pendingDelete) return;
+    onChange(roster.filter((player) => player.id !== pendingDelete.id));
+    setPendingDelete(null);
   }
+
+  useEffect(() => {
+    if (!pendingDelete) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setPendingDelete(null);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pendingDelete]);
 
   function renderPlayers(players: Player[]) {
     return (
@@ -245,7 +258,7 @@ export function RosterTable({ roster, onChange, onAdd }: Props) {
                   key={player.id}
                   player={player}
                   onPatch={(next) => patchAt(player.id, next)}
-                  onRemove={() => remove(player.id)}
+                  onRemove={() => setPendingDelete(player)}
                 />
               ))}
             </tbody>
@@ -257,7 +270,7 @@ export function RosterTable({ roster, onChange, onAdd }: Props) {
               key={player.id}
               player={player}
               onPatch={(next) => patchAt(player.id, next)}
-              onRemove={() => remove(player.id)}
+              onRemove={() => setPendingDelete(player)}
             />
           ))}
         </div>
@@ -285,6 +298,36 @@ export function RosterTable({ roster, onChange, onAdd }: Props) {
           <summary>Out this week ({absent.length})</summary>
           {renderPlayers(absent)}
         </details>
+      )}
+      {pendingDelete && (
+        <div
+          className="sb-modal"
+          role="presentation"
+          onClick={() => setPendingDelete(null)}
+        >
+          <div
+            className="sb-modal__box"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="sb-delete-title"
+            aria-describedby="sb-delete-copy"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="sb-delete-title">Delete player?</h2>
+            {pendingDelete.name.trim() ? (
+              <p className="sb-modal__name">{pendingDelete.name.trim()}</p>
+            ) : null}
+            <p id="sb-delete-copy">Are you sure you want to delete this player from the roster?</p>
+            <div className="sb-modal__actions">
+              <button type="button" className="sb-btn" onClick={() => setPendingDelete(null)}>
+                Cancel
+              </button>
+              <button type="button" className="sb-btn sb-btn--danger" onClick={confirmRemove}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
