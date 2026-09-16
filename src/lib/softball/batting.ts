@@ -47,15 +47,29 @@ export function generateBattingOrder(roster: Player[], idealOrder: string[] = []
   if (females.length === 0) return males.map((player) => player.id);
   if (males.length === 0) return females.map((player) => player.id);
 
-  // Enough 3-and-1 groups for every man to bat once, and every woman to bat
-  // once before any woman is used a second time. Men/women keep ideal relative order.
-  const groups = Math.max(Math.ceil(males.length / 3), females.length);
+  // 3-and-1 groups in ideal order. Each man is used at most once; a woman
+  // repeats only after every present woman has batted.
   const order: string[] = [];
-  for (let group = 0; group < groups; group++) {
-    for (let slot = 0; slot < 3; slot++) {
-      order.push(males[(group * 3 + slot) % males.length].id);
-    }
-    order.push(females[group % females.length].id);
+  let womanWrap = 0;
+  const nextWoman = (): string => {
+    const unused = females.find((player) => !order.includes(player.id));
+    if (unused) return unused.id;
+    return females[womanWrap++ % females.length].id;
+  };
+
+  let manIndex = 0;
+  while (manIndex + 3 <= males.length) {
+    order.push(males[manIndex].id, males[manIndex + 1].id, males[manIndex + 2].id);
+    order.push(nextWoman());
+    manIndex += 3;
+  }
+  while (manIndex < males.length) {
+    order.push(males[manIndex].id);
+    manIndex += 1;
+  }
+  if (males.length % 3 !== 0) order.push(nextWoman());
+  for (const woman of females) {
+    if (!order.includes(woman.id)) order.push(woman.id);
   }
   return order;
 }
