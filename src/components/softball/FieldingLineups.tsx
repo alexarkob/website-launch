@@ -63,7 +63,15 @@ const DIAMOND_SPOTS: Record<Position, { x: number; y: number }> = {
   C: { x: 50, y: 83 },
 };
 
-function PlayerChip({ player, compact = false }: { player: Player; compact?: boolean }) {
+function PlayerChip({
+  player,
+  compact = false,
+  preferred,
+}: {
+  player: Player;
+  compact?: boolean;
+  preferred?: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: player.id,
   });
@@ -71,18 +79,27 @@ function PlayerChip({ player, compact = false }: { player: Player; compact?: boo
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.6 : 1,
   };
+  const fitClass =
+    preferred === true ? " is-preferred" : preferred === false ? " is-unpreferred" : "";
+  const fitLabel =
+    preferred === true
+      ? "preferred position"
+      : preferred === false
+        ? "not a preferred position"
+        : undefined;
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`sb-chip${compact ? " is-compact" : ""} ${player.gender === "female" ? "is-f" : "is-m"}${isDragging ? " is-dragging" : ""}`}
+      className={`sb-chip${compact ? " is-compact" : ""} ${player.gender === "female" ? "is-f" : "is-m"}${isDragging ? " is-dragging" : ""}${fitClass}`}
+      title={fitLabel}
     >
       <button
         type="button"
         className="sb-grip"
         {...attributes}
         {...listeners}
-        aria-label={`Drag ${player.name || "player"}`}
+        aria-label={`Drag ${player.name || "player"}${fitLabel ? `, ${fitLabel}` : ""}`}
       >
         ::
       </button>
@@ -139,20 +156,23 @@ function PositionSlot({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `pos:${position}` });
   const spot = DIAMOND_SPOTS[position];
+  const preferred = player ? player.positions.includes(position) : undefined;
+  const fitClass =
+    preferred === true ? " is-preferred" : preferred === false ? " is-unpreferred" : "";
   return (
     <div
       ref={setNodeRef}
       data-pos={position}
-      className={`sb-slot ${isOver ? "is-over" : ""}`}
+      className={`sb-slot ${isOver ? "is-over" : ""}${fitClass}`}
       style={layout === "diamond" ? { left: `${spot.x}%`, top: `${spot.y}%` } : undefined}
-      aria-label={`${POSITION_LABELS[position]}${player ? `: ${player.name}` : ", empty"}`}
+      aria-label={`${POSITION_LABELS[position]}${player ? `: ${player.name}` : ", empty"}${preferred === true ? ", preferred" : preferred === false ? ", not preferred" : ""}`}
     >
       <span className="sb-slot__pos">
         {position}
         <small>{POSITION_LABELS[position]}</small>
       </span>
       {player ? (
-        <PlayerChip player={player} compact={layout === "diamond"} />
+        <PlayerChip player={player} compact={layout === "diamond"} preferred={preferred} />
       ) : (
         <span className="sb-slot__empty">Empty</span>
       )}
