@@ -10,35 +10,36 @@ export function generateBattingOrder(roster: Player[]): string[] {
   if (females.length === 0) return males.map((player) => player.id);
   if (males.length === 0) return females.map((player) => player.id);
 
+  // Enough 3-and-1 groups for every man to bat once, and every woman to bat
+  // once before any woman is used a second time.
+  const groups = Math.max(Math.ceil(males.length / 3), females.length);
   const order: string[] = [];
-  const seen = new Set<string>();
-  let maleIndex = 0;
-  let femaleIndex = 0;
-  const cap = Math.max(present.length * 4, 8);
-
-  while (order.length < cap) {
+  for (let group = 0; group < groups; group++) {
     for (let slot = 0; slot < 3; slot++) {
-      const player = males[maleIndex % males.length];
-      order.push(player.id);
-      seen.add(player.id);
-      maleIndex += 1;
+      order.push(males[(group * 3 + slot) % males.length].id);
     }
-    const woman = females[femaleIndex % females.length];
-    order.push(woman.id);
-    seen.add(woman.id);
-    femaleIndex += 1;
-    if (present.every((player) => seen.has(player.id))) break;
+    order.push(females[group % females.length].id);
   }
-
   return order;
 }
 
-export function battingRuleWarning(order: Player[]): string | null {
+export function battingRuleWarning(order: Player[], roster: Player[] = order): string | null {
   if (order.length === 0) return null;
 
+  const presentWomen = presentPlayers(roster).filter((player) => player.gender === "female");
   const females = order.filter((player) => player.gender === "female").length;
   if (females === 0) {
     return "No women in the batting order — a woman should hit every 4 at-bats.";
+  }
+
+  const seenWomen = new Set<string>();
+  for (const player of order) {
+    if (player.gender !== "female") continue;
+    const missingWoman = presentWomen.some((woman) => !seenWomen.has(woman.id));
+    if (seenWomen.has(player.id) && missingWoman) {
+      return "A woman repeats before every present woman has batted.";
+    }
+    seenWomen.add(player.id);
   }
 
   for (let i = 0; i < order.length; i += 4) {

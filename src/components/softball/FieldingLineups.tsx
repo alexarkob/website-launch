@@ -133,6 +133,7 @@ function PositionSlot({
   return (
     <div
       ref={setNodeRef}
+      data-pos={position}
       className={`sb-slot ${isOver ? "is-over" : ""}`}
       style={layout === "diamond" ? { left: `${spot.x}%`, top: `${spot.y}%` } : undefined}
       aria-label={`${POSITION_LABELS[position]}${player ? `: ${player.name}` : ", empty"}`}

@@ -112,6 +112,7 @@ function PlayerRow({
           {POSITIONS.map((position) => (
             <label
               key={position}
+              data-pos={position}
               className={player.positions.includes(position) ? "is-on" : ""}
               title={POSITION_LABELS[position]}
             >

@@ -87,7 +87,7 @@ export function BattingOrder({
   const ordered = state.battingOrder
     .map((id) => byId.get(id))
     .filter((player): player is Player => Boolean(player));
-  const warning = battingRuleWarning(ordered);
+  const warning = battingRuleWarning(ordered, state.roster);
   const items = state.battingOrder.map((playerId, index) => `${playerId}::${index}`);
 
   const sensors = useSensors(
