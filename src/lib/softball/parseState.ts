@@ -82,6 +82,9 @@ export function parseClientState(value: unknown): Omit<TeamState, "spotify"> {
   const battingOrder = Array.isArray(row.battingOrder)
     ? row.battingOrder.filter((id): id is string => typeof id === "string")
     : [];
+  const idealBattingOrder = Array.isArray(row.idealBattingOrder)
+    ? row.idealBattingOrder.filter((id): id is string => typeof id === "string")
+    : [];
   const parsedInnings = Array.isArray(row.innings) ? row.innings.map(parseInning) : [];
   const innings = Array.from(
     { length: INNING_COUNT },
@@ -90,6 +93,8 @@ export function parseClientState(value: unknown): Omit<TeamState, "spotify"> {
 
   return {
     roster,
+    idealBattingOrder,
+    idealBattingLocked: row.idealBattingLocked !== false,
     battingOrder,
     innings,
     needsRegen: Boolean(row.needsRegen),

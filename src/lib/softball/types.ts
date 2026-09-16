@@ -58,6 +58,10 @@ export interface FieldingInning {
 
 export interface TeamState {
   roster: Player[];
+  /** Season-long preferred order of every roster player. */
+  idealBattingOrder: string[];
+  idealBattingLocked: boolean;
+  /** This week's order (present players, 3-and-1). */
   battingOrder: string[];
   innings: FieldingInning[];
   needsRegen: boolean;
@@ -114,6 +118,8 @@ export function emptyInning(): FieldingInning {
 export function emptyStoredState(): Omit<TeamState, "spotify"> {
   return {
     roster: [],
+    idealBattingOrder: [],
+    idealBattingLocked: true,
     battingOrder: [],
     innings: Array.from({ length: INNING_COUNT }, emptyInning),
     needsRegen: false,
@@ -121,12 +127,15 @@ export function emptyStoredState(): Omit<TeamState, "spotify"> {
 }
 
 export function toClientState(team: TeamRecord): TeamState {
+  const stored = team.state;
   return {
-    ...team.state,
+    ...stored,
+    idealBattingOrder: Array.isArray(stored.idealBattingOrder) ? stored.idealBattingOrder : [],
+    idealBattingLocked: stored.idealBattingLocked !== false,
     innings:
-      team.state.innings.length === INNING_COUNT
-        ? team.state.innings
-        : Array.from({ length: INNING_COUNT }, (_, i) => team.state.innings[i] ?? emptyInning()),
+      stored.innings.length === INNING_COUNT
+        ? stored.innings
+        : Array.from({ length: INNING_COUNT }, (_, i) => stored.innings[i] ?? emptyInning()),
     spotify: {
       connected: Boolean(team.spotifyRefreshToken),
       playlistId: team.spotifyPlaylistId,

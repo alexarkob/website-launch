@@ -7,7 +7,7 @@ import { BattingOrder } from "./BattingOrder";
 import { FieldingLineups } from "./FieldingLineups";
 import { LoginGate } from "./LoginGate";
 import { RosterTable } from "./RosterTable";
-import { loadState, logout, saveState } from "./api";
+import { loadState, logout, saveState, verifyAdminPin } from "./api";
 
 type Tab = "roster" | "batting" | "fielding";
 
@@ -27,6 +27,8 @@ export default function SoftballApp() {
   const [saveLabel, setSaveLabel] = useState("Saved");
   const [fieldingNotes, setFieldingNotes] = useState<string[]>([]);
   const skipSave = useRef(true);
+  const adminPinRef = useRef<string | null>(null);
+  const [canEditIdeal, setCanEditIdeal] = useState(false);
 
   async function hydrate() {
     setError(null);
@@ -59,9 +61,13 @@ export default function SoftballApp() {
     }
     setSaveLabel("Saving…");
     const timer = window.setTimeout(() => {
-      saveState(state)
+      saveState(state, adminPinRef.current ?? undefined)
         .then(() => {
           setSaveLabel("Saved");
+          if (state.idealBattingLocked) {
+            adminPinRef.current = null;
+            setCanEditIdeal(false);
+          }
         })
         .catch((err: unknown) => {
           setSaveLabel("Save failed");
@@ -87,7 +93,7 @@ export default function SoftballApp() {
   function handleGenerateBatting() {
     patchState((prev) => ({
       ...prev,
-      battingOrder: generateBattingOrder(prev.roster),
+      battingOrder: generateBattingOrder(prev.roster, prev.idealBattingOrder),
       needsRegen: false,
     }));
   }
@@ -105,7 +111,7 @@ export default function SoftballApp() {
     setFieldingNotes(result.warnings);
     patchState((prev) => ({
       ...prev,
-      battingOrder: generateBattingOrder(prev.roster),
+      battingOrder: generateBattingOrder(prev.roster, prev.idealBattingOrder),
       innings: result.innings,
       needsRegen: false,
     }));
@@ -116,6 +122,8 @@ export default function SoftballApp() {
     setTeam(null);
     setState(null);
     skipSave.current = true;
+    adminPinRef.current = null;
+    setCanEditIdeal(false);
   }
 
   if (!ready) {
@@ -191,8 +199,19 @@ export default function SoftballApp() {
           {tab === "batting" && (
             <BattingOrder
               state={state}
-              onOrderChange={(battingOrder) => patchState((prev) => ({ ...prev, battingOrder }))}
+              canEditIdeal={canEditIdeal}
+              onIdealChange={(idealBattingOrder) =>
+                patchState((prev) => ({ ...prev, idealBattingOrder }))
+              }
+              onWeekChange={(battingOrder) => patchState((prev) => ({ ...prev, battingOrder }))}
               onGenerate={handleGenerateBatting}
+              onUnlock={async (adminPin) => {
+                await verifyAdminPin(adminPin);
+                adminPinRef.current = adminPin;
+                setCanEditIdeal(true);
+                patchState((prev) => ({ ...prev, idealBattingLocked: false }));
+              }}
+              onLock={() => patchState((prev) => ({ ...prev, idealBattingLocked: true }))}
             />
           )}
           {tab === "fielding" && (

@@ -11,6 +11,7 @@ import {
   verifyPassword,
 } from "./auth";
 import { parseClientState } from "./parseState";
+import { ensureIdealOrder, uniqueFirst } from "./batting";
 import {
   authorizeUrl,
   exchangeCode,
@@ -73,10 +74,23 @@ async function requireTeam(
 }
 
 function clientPayload(team: TeamRecord) {
+  const state = toClientState(team);
+  const seededIdeal = state.idealBattingOrder.length
+    ? ensureIdealOrder(state.roster, state.idealBattingOrder)
+    : ensureIdealOrder(state.roster, uniqueFirst(state.battingOrder));
   return {
     team: { id: team.id, name: team.name, season: team.season },
-    state: toClientState(team),
+    state: {
+      ...state,
+      idealBattingOrder: seededIdeal,
+      idealBattingLocked: team.state.idealBattingLocked !== false,
+    },
   };
+}
+
+function adminPinOk(env: SoftballEnv, pin: unknown): boolean {
+  const expected = env.SOFTBALL_ADMIN_PIN?.trim();
+  return Boolean(expected && String(pin ?? "") === expected);
 }
 
 async function readJson(request: Request): Promise<Record<string, unknown>> {
@@ -119,8 +133,7 @@ export async function handleSoftballRequest(
     if (route === "/teams" && method === "POST") {
       const body = await readJson(request);
       const adminPin = String(body.adminPin ?? "");
-      const expected = env.SOFTBALL_ADMIN_PIN?.trim();
-      if (!expected || adminPin !== expected) {
+      if (!adminPinOk(env, adminPin)) {
         throw new SoftballApiError(403, "Admin PIN is incorrect.");
       }
       const name = String(body.name ?? "").trim();
@@ -166,6 +179,15 @@ export async function handleSoftballRequest(
       );
     }
 
+    if (route === "/admin" && method === "POST") {
+      await requireTeam(request, env, store);
+      const body = await readJson(request);
+      if (!adminPinOk(env, body.adminPin)) {
+        throw new SoftballApiError(403, "Admin PIN is incorrect.");
+      }
+      return json({ ok: true });
+    }
+
     if (route === "/state" && method === "GET") {
       const team = await requireTeam(request, env, store);
       return json(clientPayload(team));
@@ -174,7 +196,22 @@ export async function handleSoftballRequest(
     if (route === "/state" && method === "PUT") {
       const team = await requireTeam(request, env, store);
       const body = await readJson(request);
-      team.state = parseClientState(body);
+      const incoming = parseClientState(body);
+      const adminOk = adminPinOk(env, body.adminPin);
+      const storedIdeal = Array.isArray(team.state.idealBattingOrder)
+        ? team.state.idealBattingOrder
+        : [];
+      const storedLocked = team.state.idealBattingLocked !== false;
+      const canEditIdeal = adminOk || storedLocked === false;
+      const seed = storedIdeal.length ? storedIdeal : uniqueFirst(incoming.battingOrder);
+      team.state = {
+        ...incoming,
+        idealBattingOrder: ensureIdealOrder(
+          incoming.roster,
+          canEditIdeal ? incoming.idealBattingOrder : seed,
+        ),
+        idealBattingLocked: adminOk ? incoming.idealBattingLocked : storedLocked,
+      };
       await store.putTeam(team);
       return json(clientPayload(team));
     }

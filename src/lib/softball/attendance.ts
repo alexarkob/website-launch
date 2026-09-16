@@ -1,3 +1,4 @@
+import { ensureIdealOrder } from "./batting";
 import { POSITIONS, presentPlayers, type Player, type TeamState } from "./types";
 import { rebuildBench } from "./fielding";
 
@@ -31,6 +32,7 @@ export function syncAttendance(state: TeamState, roster: Player[]): TeamState {
   return {
     ...state,
     roster,
+    idealBattingOrder: ensureIdealOrder(roster, state.idealBattingOrder),
     battingOrder,
     innings,
     needsRegen: state.needsRegen || dropped || missingPresent,

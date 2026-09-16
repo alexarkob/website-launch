@@ -1,3 +1,4 @@
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -6,49 +7,164 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { battingRuleWarning } from "../../lib/softball/batting";
+import { battingRuleWarning, ensureIdealOrder } from "../../lib/softball/batting";
 import { playersById, type Player, type TeamState, type WalkUpSong } from "../../lib/softball/types";
 import { useSoftballDndSensors } from "./useSoftballDndSensors";
 
 interface Props {
   state: TeamState;
-  onOrderChange: (order: string[]) => void;
+  canEditIdeal: boolean;
+  onIdealChange: (order: string[]) => void;
+  onWeekChange: (order: string[]) => void;
   onGenerate: () => void;
+  onUnlock: (adminPin: string) => Promise<void>;
+  onLock: () => void;
 }
 
 function trackUrl(song: WalkUpSong): string {
   return `https://open.spotify.com/track/${song.spotifyId}`;
 }
 
+function duplicateAt(order: string[], index: number): string[] {
+  const next = [...order];
+  next.splice(index + 1, 0, order[index]);
+  return next;
+}
+
+function TileMenu({
+  id,
+  openId,
+  onToggle,
+  onClose,
+  onDuplicate,
+  onDelete,
+}: {
+  id: string;
+  openId: string | null;
+  onToggle: () => void;
+  onClose: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const open = openId === id;
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(event: PointerEvent) {
+      if (!boxRef.current?.contains(event.target as Node)) onClose();
+    }
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
+  }, [open, onClose]);
+
+  return (
+    <div className="sb-tile-menu" ref={boxRef}>
+      <button
+        type="button"
+        className="sb-tile-menu__btn"
+        aria-label="Player actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={onToggle}
+      >
+        <span aria-hidden="true">⋮</span>
+      </button>
+      {open && (
+        <div
+          className="sb-tile-menu__list"
+          role="menu"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDuplicate();
+              onClose();
+            }}
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="is-danger"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete();
+              onClose();
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SortableBatter({
   id,
   index,
   player,
+  canDrag,
+  showMenu,
+  showOut,
+  openMenuId,
+  onToggleMenu,
+  onCloseMenu,
+  onDuplicate,
+  onDelete,
 }: {
   id: string;
   index: number;
   player: Player | undefined;
+  canDrag: boolean;
+  showMenu: boolean;
+  showOut?: boolean;
+  openMenuId: string | null;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
+    disabled: !canDrag,
   });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    zIndex: openMenuId === id ? 20 : undefined,
   };
+  const absent = showOut && player && !player.present;
 
   return (
     <li
       ref={setNodeRef}
       style={style}
-      className={`sb-tile ${player?.gender === "female" ? "is-f" : "is-m"} ${isDragging ? "is-dragging" : ""}`}
+      className={`sb-tile ${player?.gender === "female" ? "is-f" : "is-m"} ${isDragging ? "is-dragging" : ""}${absent ? " is-out" : ""}${showMenu ? " has-menu" : ""}`}
     >
-      <button type="button" className="sb-grip" {...attributes} {...listeners} aria-label="Drag">
-        ::
-      </button>
+      {canDrag ? (
+        <button type="button" className="sb-grip" {...attributes} {...listeners} aria-label="Drag">
+          ::
+        </button>
+      ) : (
+        <span className="sb-grip is-static" aria-hidden="true">
+          ::
+        </span>
+      )}
       <span className="sb-tile__num">{index + 1}</span>
       <span className="sb-tile__name">{player?.name || "Unnamed"}</span>
-      <span className="sb-tile__tag">{player?.gender === "female" ? "F" : "M"}</span>
+      <span className="sb-tile__tag">
+        {player?.gender === "female" ? "F" : "M"}
+        {absent ? " · Out" : ""}
+      </span>
       {player?.walkUpSong ? (
         <a
           className="sb-tile__song"
@@ -66,64 +182,220 @@ function SortableBatter({
       ) : (
         <span className="sb-tile__song is-empty">No walk-up</span>
       )}
+      {showMenu && (
+        <TileMenu
+          id={id}
+          openId={openMenuId}
+          onToggle={onToggleMenu}
+          onClose={onCloseMenu}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+        />
+      )}
     </li>
+  );
+}
+
+function UnlockForm({ onUnlock }: { onUnlock: (adminPin: string) => Promise<void> }) {
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await onUnlock(pin);
+      setPin("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not unlock.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="sb-unlock" onSubmit={(event) => void handleSubmit(event)}>
+      <label className="sb-sr" htmlFor="sb-admin-pin">
+        Admin PIN
+      </label>
+      <input
+        id="sb-admin-pin"
+        type="password"
+        value={pin}
+        onChange={(e) => setPin(e.target.value)}
+        placeholder="Admin PIN"
+        autoComplete="off"
+        required
+      />
+      <button type="submit" className="sb-btn" disabled={busy || !pin}>
+        Unlock
+      </button>
+      {error && <p className="sb-tiny-warn">{error}</p>}
+    </form>
   );
 }
 
 export function BattingOrder({
   state,
-  onOrderChange,
+  canEditIdeal,
+  onIdealChange,
+  onWeekChange,
   onGenerate,
+  onUnlock,
+  onLock,
 }: Props) {
   const byId = playersById(state.roster);
-  const ordered = state.battingOrder
+  const idealIds = ensureIdealOrder(state.roster, state.idealBattingOrder);
+  const weekPlayers = state.battingOrder
     .map((id) => byId.get(id))
     .filter((player): player is Player => Boolean(player));
-  const warning = battingRuleWarning(ordered, state.roster);
-  const items = state.battingOrder.map((playerId, index) => `${playerId}::${index}`);
+  const warning = battingRuleWarning(weekPlayers, state.roster);
+  const idealItems = idealIds.map((playerId, index) => `ideal:${playerId}::${index}`);
+  const weekItems = state.battingOrder.map((playerId, index) => `week:${playerId}::${index}`);
+  const [idealDeleteWarn, setIdealDeleteWarn] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const { sensors, autoScroll } = useSoftballDndSensors();
+  const idealSensors = useSoftballDndSensors();
+  const weekSensors = useSoftballDndSensors();
 
-  function handleDragEnd(event: DragEndEvent) {
+  function handleIdealDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!canEditIdeal || !over || active.id === over.id) return;
+    const oldIndex = idealItems.indexOf(String(active.id));
+    const newIndex = idealItems.indexOf(String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+    onIdealChange(arrayMove(idealIds, oldIndex, newIndex));
+  }
+
+  function handleWeekDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = items.indexOf(String(active.id));
-    const newIndex = items.indexOf(String(over.id));
+    const oldIndex = weekItems.indexOf(String(active.id));
+    const newIndex = weekItems.indexOf(String(over.id));
     if (oldIndex < 0 || newIndex < 0) return;
-    onOrderChange(arrayMove(state.battingOrder, oldIndex, newIndex));
+    onWeekChange(arrayMove(state.battingOrder, oldIndex, newIndex));
+  }
+
+  function handleIdealDelete(index: number) {
+    const playerId = idealIds[index];
+    const copies = idealIds.filter((id) => id === playerId).length;
+    if (copies <= 1) {
+      const name = byId.get(playerId)?.name || "This player";
+      setIdealDeleteWarn(
+        `${name} has to stay in the ideal order at least once. Duplicate them first if you want extra at-bats, but you cannot remove them entirely.`,
+      );
+      return;
+    }
+    setIdealDeleteWarn(null);
+    const next = [...idealIds];
+    next.splice(index, 1);
+    onIdealChange(next);
   }
 
   return (
     <div className="sb-batting">
-      <div className="sb-toolbar">
-        <button type="button" className="sb-btn sb-btn--primary" onClick={onGenerate}>
-          Generate batting order
-        </button>
-      </div>
-      {warning && <p className="sb-banner sb-banner--warn">{warning}</p>}
-      {ordered.length === 0 ? (
-        <p className="sb-muted">Generate an order from everyone marked present this week.</p>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          autoScroll={autoScroll}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={items} strategy={verticalListSortingStrategy}>
-            <ol className="sb-order">
-              {state.battingOrder.map((playerId, index) => (
-                <SortableBatter
-                  key={items[index]}
-                  id={items[index]}
-                  index={index}
-                  player={byId.get(playerId)}
-                />
-              ))}
-            </ol>
-          </SortableContext>
-        </DndContext>
-      )}
+      <section className="sb-batting-section">
+        <div className="sb-toolbar">
+          <div>
+            <h2>Ideal batting order</h2>
+            <p className="sb-muted">
+              Season lineup for every player. Unlock with the admin PIN to reorder, then lock it.
+              {canEditIdeal ? " Use the three-dot menu on the right to duplicate or delete a slot." : ""}
+            </p>
+          </div>
+          {canEditIdeal ? (
+            <button type="button" className="sb-btn sb-btn--primary" onClick={onLock}>
+              Lock
+            </button>
+          ) : (
+            <UnlockForm onUnlock={onUnlock} />
+          )}
+        </div>
+        {idealDeleteWarn && <p className="sb-banner sb-banner--warn">{idealDeleteWarn}</p>}
+        {idealIds.length === 0 ? (
+          <p className="sb-muted">Add players on the roster tab to build an ideal order.</p>
+        ) : (
+          <DndContext
+            sensors={idealSensors.sensors}
+            collisionDetection={closestCenter}
+            autoScroll={idealSensors.autoScroll}
+            onDragEnd={handleIdealDragEnd}
+          >
+            <SortableContext items={idealItems} strategy={verticalListSortingStrategy}>
+              <ol className="sb-order">
+                {idealIds.map((playerId, index) => (
+                  <SortableBatter
+                    key={idealItems[index]}
+                    id={idealItems[index]}
+                    index={index}
+                    player={byId.get(playerId)}
+                    canDrag={canEditIdeal}
+                    showMenu={canEditIdeal}
+                    showOut
+                    openMenuId={openMenuId}
+                    onToggleMenu={() => setOpenMenuId((current) => (current === idealItems[index] ? null : idealItems[index]))}
+                    onCloseMenu={() => setOpenMenuId(null)}
+                    onDuplicate={() => onIdealChange(duplicateAt(idealIds, index))}
+                    onDelete={() => handleIdealDelete(index)}
+                  />
+                ))}
+              </ol>
+            </SortableContext>
+          </DndContext>
+        )}
+      </section>
+
+      <section className="sb-batting-section">
+        <div className="sb-toolbar">
+          <div>
+            <h2>This week’s order</h2>
+            <p className="sb-muted">
+              Present players only, 3 men then 1 woman, as close as possible to the ideal lineup.
+              Use the three-dot menu on the right to duplicate or delete a slot.
+            </p>
+          </div>
+          <button type="button" className="sb-btn sb-btn--primary" onClick={onGenerate}>
+            Generate this week’s order
+          </button>
+        </div>
+        {warning && <p className="sb-banner sb-banner--warn">{warning}</p>}
+        {weekPlayers.length === 0 ? (
+          <p className="sb-muted">Generate an order from everyone marked present this week.</p>
+        ) : (
+          <DndContext
+            sensors={weekSensors.sensors}
+            collisionDetection={closestCenter}
+            autoScroll={weekSensors.autoScroll}
+            onDragEnd={handleWeekDragEnd}
+          >
+            <SortableContext items={weekItems} strategy={verticalListSortingStrategy}>
+              <ol className="sb-order">
+                {state.battingOrder.map((playerId, index) => (
+                  <SortableBatter
+                    key={weekItems[index]}
+                    id={weekItems[index]}
+                    index={index}
+                    player={byId.get(playerId)}
+                    canDrag
+                    showMenu
+                    openMenuId={openMenuId}
+                    onToggleMenu={() => setOpenMenuId((current) => (current === weekItems[index] ? null : weekItems[index]))}
+                    onCloseMenu={() => setOpenMenuId(null)}
+                    onDuplicate={() => onWeekChange(duplicateAt(state.battingOrder, index))}
+                    onDelete={() => {
+                      const next = [...state.battingOrder];
+                      next.splice(index, 1);
+                      onWeekChange(next);
+                    }}
+                  />
+                ))}
+              </ol>
+            </SortableContext>
+          </DndContext>
+        )}
+      </section>
     </div>
   );
 }

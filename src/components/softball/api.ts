@@ -50,15 +50,25 @@ export async function loadState(): Promise<ClientTeamPayload | null> {
   return (await res.json()) as ClientTeamPayload;
 }
 
-export async function saveState(state: TeamState): Promise<ClientTeamPayload> {
+export async function saveState(state: TeamState, adminPin?: string): Promise<ClientTeamPayload> {
   const res = await fetch("/api/softball/state", {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(state),
+    body: JSON.stringify(adminPin ? { ...state, adminPin } : state),
   });
   if (!res.ok) throw new Error(await parseError(res));
   return (await res.json()) as ClientTeamPayload;
+}
+
+export async function verifyAdminPin(adminPin: string): Promise<void> {
+  const res = await fetch("/api/softball/admin", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ adminPin }),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
 }
 
 export async function logout(): Promise<void> {
