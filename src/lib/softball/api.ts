@@ -11,7 +11,7 @@ import {
   verifyPassword,
 } from "./auth";
 import { parseClientState } from "./parseState";
-import { ensureIdealOrder, uniqueFirst } from "./batting";
+import { ensureIdealOrder, ensureWeekOrder, uniqueFirst } from "./batting";
 import {
   authorizeUrl,
   exchangeCode,
@@ -83,6 +83,7 @@ function clientPayload(team: TeamRecord) {
     state: {
       ...state,
       idealBattingOrder: seededIdeal,
+      battingOrder: ensureWeekOrder(state.roster, state.battingOrder),
       idealBattingLocked: team.state.idealBattingLocked !== false,
     },
   };
@@ -206,6 +207,7 @@ export async function handleSoftballRequest(
       const seed = storedIdeal.length ? storedIdeal : uniqueFirst(incoming.battingOrder);
       team.state = {
         ...incoming,
+        battingOrder: ensureWeekOrder(incoming.roster, incoming.battingOrder),
         idealBattingOrder: ensureIdealOrder(
           incoming.roster,
           canEditIdeal ? incoming.idealBattingOrder : seed,

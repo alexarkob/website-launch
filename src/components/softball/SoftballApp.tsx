@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { newPlayer, syncAttendance } from "../../lib/softball/attendance";
-import { generateBattingOrder } from "../../lib/softball/batting";
+import { ensureWeekOrder, generateBattingOrder } from "../../lib/softball/batting";
 import { generateFielding } from "../../lib/softball/fielding";
 import type { TeamPublic, TeamState } from "../../lib/softball/types";
 import { BattingOrder } from "./BattingOrder";
@@ -203,7 +203,12 @@ export default function SoftballApp() {
               onIdealChange={(idealBattingOrder) =>
                 patchState((prev) => ({ ...prev, idealBattingOrder }))
               }
-              onWeekChange={(battingOrder) => patchState((prev) => ({ ...prev, battingOrder }))}
+              onWeekChange={(battingOrder) =>
+                patchState((prev) => ({
+                  ...prev,
+                  battingOrder: ensureWeekOrder(prev.roster, battingOrder),
+                }))
+              }
               onGenerate={handleGenerateBatting}
               onUnlock={async (adminPin) => {
                 await verifyAdminPin(adminPin);

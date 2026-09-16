@@ -7,7 +7,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { battingRuleWarning, ensureIdealOrder } from "../../lib/softball/batting";
+import { battingRuleWarning, ensureIdealOrder, ensureWeekOrder } from "../../lib/softball/batting";
 import { playersById, type Player, type TeamState, type WalkUpSong } from "../../lib/softball/types";
 import { useSoftballDndSensors } from "./useSoftballDndSensors";
 
@@ -248,13 +248,15 @@ export function BattingOrder({
 }: Props) {
   const byId = playersById(state.roster);
   const idealIds = ensureIdealOrder(state.roster, state.idealBattingOrder);
-  const weekPlayers = state.battingOrder
+  const weekIds = ensureWeekOrder(state.roster, state.battingOrder);
+  const weekPlayers = weekIds
     .map((id) => byId.get(id))
     .filter((player): player is Player => Boolean(player));
   const warning = battingRuleWarning(weekPlayers, state.roster);
   const idealItems = idealIds.map((playerId, index) => `ideal:${playerId}::${index}`);
-  const weekItems = state.battingOrder.map((playerId, index) => `week:${playerId}::${index}`);
+  const weekItems = weekIds.map((playerId, index) => `week:${playerId}::${index}`);
   const [idealDeleteWarn, setIdealDeleteWarn] = useState<string | null>(null);
+  const [weekDeleteWarn, setWeekDeleteWarn] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const idealSensors = useSoftballDndSensors();
@@ -275,7 +277,7 @@ export function BattingOrder({
     const oldIndex = weekItems.indexOf(String(active.id));
     const newIndex = weekItems.indexOf(String(over.id));
     if (oldIndex < 0 || newIndex < 0) return;
-    onWeekChange(arrayMove(state.battingOrder, oldIndex, newIndex));
+    onWeekChange(arrayMove(weekIds, oldIndex, newIndex));
   }
 
   function handleIdealDelete(index: number) {
@@ -292,6 +294,22 @@ export function BattingOrder({
     const next = [...idealIds];
     next.splice(index, 1);
     onIdealChange(next);
+  }
+
+  function handleWeekDelete(index: number) {
+    const playerId = weekIds[index];
+    const copies = weekIds.filter((id) => id === playerId).length;
+    if (copies <= 1) {
+      const name = byId.get(playerId)?.name || "This player";
+      setWeekDeleteWarn(
+        `${name} is present this week, so they have to stay in the batting order at least once. Duplicate them first if you want extra at-bats, but you cannot remove them entirely.`,
+      );
+      return;
+    }
+    setWeekDeleteWarn(null);
+    const next = [...weekIds];
+    next.splice(index, 1);
+    onWeekChange(next);
   }
 
   return (
@@ -353,7 +371,8 @@ export function BattingOrder({
             <h2>This week’s order</h2>
             <p className="sb-muted">
               Present players only, 3 men then 1 woman, as close as possible to the ideal lineup.
-              Use the three-dot menu on the right to duplicate or delete a slot.
+              Use the three-dot menu on the right to duplicate or delete a slot. Every present
+              player has to stay in the order at least once.
             </p>
           </div>
           <button type="button" className="sb-btn sb-btn--primary" onClick={onGenerate}>
@@ -361,6 +380,7 @@ export function BattingOrder({
           </button>
         </div>
         {warning && <p className="sb-banner sb-banner--warn">{warning}</p>}
+        {weekDeleteWarn && <p className="sb-banner sb-banner--warn">{weekDeleteWarn}</p>}
         {weekPlayers.length === 0 ? (
           <p className="sb-muted">Generate an order from everyone marked present this week.</p>
         ) : (
@@ -372,7 +392,7 @@ export function BattingOrder({
           >
             <SortableContext items={weekItems} strategy={verticalListSortingStrategy}>
               <ol className="sb-order">
-                {state.battingOrder.map((playerId, index) => (
+                {weekIds.map((playerId, index) => (
                   <SortableBatter
                     key={weekItems[index]}
                     id={weekItems[index]}
@@ -383,12 +403,8 @@ export function BattingOrder({
                     openMenuId={openMenuId}
                     onToggleMenu={() => setOpenMenuId((current) => (current === weekItems[index] ? null : weekItems[index]))}
                     onCloseMenu={() => setOpenMenuId(null)}
-                    onDuplicate={() => onWeekChange(duplicateAt(state.battingOrder, index))}
-                    onDelete={() => {
-                      const next = [...state.battingOrder];
-                      next.splice(index, 1);
-                      onWeekChange(next);
-                    }}
+                    onDuplicate={() => onWeekChange(duplicateAt(weekIds, index))}
+                    onDelete={() => handleWeekDelete(index)}
                   />
                 ))}
               </ol>

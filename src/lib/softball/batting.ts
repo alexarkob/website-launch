@@ -24,6 +24,20 @@ export function ensureIdealOrder(roster: Player[], ideal: string[] = []): string
   return next;
 }
 
+/** Keep extra copies, but every present player appears at least once. */
+export function ensureWeekOrder(roster: Player[], order: string[] = []): string[] {
+  const present = presentPlayers(roster);
+  const ids = new Set(present.map((player) => player.id));
+  const next = order.filter((id) => ids.has(id));
+  const seen = new Set(next);
+  for (const player of present) {
+    if (seen.has(player.id)) continue;
+    seen.add(player.id);
+    next.push(player.id);
+  }
+  return next;
+}
+
 function byIdealRank(idealOrder: string[]) {
   const rank = new Map<string, number>();
   for (const [index, id] of idealOrder.entries()) {
@@ -71,7 +85,7 @@ export function generateBattingOrder(roster: Player[], idealOrder: string[] = []
   for (const woman of females) {
     if (!order.includes(woman.id)) order.push(woman.id);
   }
-  return order;
+  return ensureWeekOrder(roster, order);
 }
 
 export function battingRuleWarning(order: Player[], roster: Player[] = order): string | null {
