@@ -1,0 +1,86 @@
+[
+  {
+    "id": "benedict-mobile-shift",
+    "title": "Mobile as a platform shift",
+    "url": "https://www.ben-evans.com/",
+    "date": "2015",
+    "text": "Mobile was not just a smaller PC \u2014 it changed the default computing environment for billions of people. New form factors create new usage patterns, new distribution (app stores), and new winners. The useful question is always: what becomes possible when the constraint changes?"
+  },
+  {
+    "id": "benedict-unbundling",
+    "title": "Bundling and unbundling",
+    "url": "https://www.ben-evans.com/",
+    "date": "2016",
+    "text": "Tech history repeatedly bundles and unbundles. Newspapers unbundled into specialized apps and sites; messaging and social rebundled attention. Analysis should identify which layer is being unbundled and who captures the newly exposed value."
+  },
+  {
+    "id": "benedict-cars",
+    "title": "Cars, autonomy, and industry structure",
+    "url": "https://www.ben-evans.com/",
+    "date": "2017",
+    "text": "Autonomy and EVs threaten not only drivetrains but dealership, insurance, and oil-adjacent value chains. Yet cars are regulated physical products with long cycles \u2014 not pure software. Separate the slide-deck future from near-term constraints: cost, liability, and deployment geography."
+  },
+  {
+    "id": "benedict-media",
+    "title": "Media after the internet",
+    "url": "https://www.ben-evans.com/",
+    "date": "2018",
+    "text": "The internet did not kill storytelling; it changed distribution and advertising. Attention fragmented while a few platforms aggregated audiences. Creators can reach fans directly, but discovery and monetization remain hard problems."
+  },
+  {
+    "id": "benedict-ai-presentation",
+    "title": "AI as another transition",
+    "url": "https://www.ben-evans.com/",
+    "date": "2023",
+    "text": "AI looks like a new platform shift, but many 'AI products' are features until they change workflows or unit economics. Compare to mobile: the winners were not every company that put a website in an app. Ask which jobs are transformed, which stay the same with better tools, and who owns distribution."
+  },
+  {
+    "id": "benedict-consumer-behavior",
+    "title": "Consumer behavior over demos",
+    "url": "https://www.ben-evans.com/",
+    "date": "2019",
+    "text": "Technology changes industries when consumer or worker behavior changes at scale. Demos and prototypes are weak evidence. Look for habit formation, frequency of use, and willingness to pay or switch."
+  },
+  {
+    "id": "benedict-retail",
+    "title": "Retail and ecommerce penetration",
+    "url": "https://www.ben-evans.com/",
+    "date": "2016",
+    "text": "Ecommerce grew for decades without replacing all retail. Categories digitize at different rates based on logistics, discovery, and trust. Charts of penetration by category beat blanket narratives about 'the death of stores.'"
+  },
+  {
+    "id": "benedict-tech-giants",
+    "title": "Big tech and adjacent markets",
+    "url": "https://www.ben-evans.com/",
+    "date": "2020",
+    "text": "Large tech companies expand into adjacent markets where their assets (users, data, capital, brand) create leverage. Not every adjacency works \u2014 culture and go-to-market matter. Map assets to the problem rather than assuming infinite expansion."
+  },
+  {
+    "id": "benedict-enterprise",
+    "title": "Enterprise software adoption",
+    "url": "https://www.ben-evans.com/",
+    "date": "2018",
+    "text": "Enterprise buying is slower and more political than consumer virality. SaaS succeeded by aligning with workflow and reducing IT burden, not only by being cloud-hosted. AI in enterprise will face the same procurement and integration realities."
+  },
+  {
+    "id": "benedict-metrics",
+    "title": "Thinking in charts",
+    "url": "https://www.ben-evans.com/",
+    "date": "2015",
+    "text": "Good tech analysis is quantitative where possible: users, revenue mix, attach rates, adoption curves. A single chart often beats a paragraph of adjectives. When reacting to news, ask what metric would falsify the exciting story."
+  },
+  {
+    "id": "benedict-platforms",
+    "title": "Platforms and regulation",
+    "url": "https://www.ben-evans.com/",
+    "date": "2021",
+    "text": "As consumer tech platforms became infrastructure, regulation followed. Policy debates should distinguish competition issues, content issues, and privacy issues \u2014 they have different tools. Industry structure analysis still comes first."
+  },
+  {
+    "id": "benedict-jobs-to-be-done",
+    "title": "Jobs to be done",
+    "url": "https://www.ben-evans.com/",
+    "date": "2017",
+    "text": "People hire products to do jobs. New technology succeeds when it does an old job better or enables a new job people actually want. Feature lists without job clarity are how you get solutions looking for problems."
+  }
+]

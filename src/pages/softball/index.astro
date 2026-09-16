@@ -1,0 +1,15 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import SoftballApp from "../../components/softball/SoftballApp";
+import "../../styles/softball.css";
+---
+
+<Layout
+  title="Softball lineup — coed batting order and fielding"
+  description="Password-gated slowpitch lineup helper: roster, 3-and-1 batting order, and 6-inning 10-player defense."
+>
+  <script is:inline>
+    document.documentElement.setAttribute("data-sb-theme", "dark");
+  </script>
+  <SoftballApp client:load />
+</Layout>

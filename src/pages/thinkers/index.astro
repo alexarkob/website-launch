@@ -1,0 +1,12 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import ThinkersApp from "../../components/thinkers/ThinkersApp";
+import "../../styles/thinkers.css";
+---
+
+<Layout
+  title="Thinkers — Persona reactions from Packy, Ben Thompson, Benedict Evans"
+  description="Content-grounded reactions from Packy McCormick, Ben Thompson, and Benedict Evans. Paste text or attach files; get short, medium, or long takes."
+>
+  <ThinkersApp client:load />
+</Layout>

@@ -13,16 +13,23 @@
     "deploy": "npm run build && wrangler pages deploy dist --project-name=arko-portfolio"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "wrangler": "^4.114.0"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.2",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "astro": "^7.1.4",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "jszip": "^3.10.1",
+    "minisearch": "^7.2.0",
+    "pdfjs-dist": "^6.2.108",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3"

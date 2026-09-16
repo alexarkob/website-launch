@@ -1,3 +1,14 @@
 name = "arko-portfolio"
 compatibility_date = "2026-07-01"
 pages_build_output_dir = "dist"
+
+# Optional: bind Workers AI for the workers-ai provider in production.
+# Local `astro dev` still uses CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN via REST.
+[ai]
+binding = "AI"
+
+# Softball lineup persistence. Set SOFTBALL_ADMIN_PIN, SOFTBALL_SESSION_SECRET,
+# and optional Spotify keys as Pages secrets (not in this file).
+[[kv_namespaces]]
+binding = "SOFTBALL"
+id = "888d7012e0d942aa89274e2d67a19cc1"

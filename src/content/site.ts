@@ -4,7 +4,7 @@ export const site = {
   name: "Arko Bhattacharyya",
   title: "Arko Bhattacharyya — Strategy, growth, and product",
   description:
-    "Strategy and growth professional with a passion for technology. Portfolio of Gov Pulse, Sector, My Bookshelf, and Fantasy Draft Helper.",
+    "Strategy and growth professional with a passion for technology. Portfolio of Gov Pulse, Sector, My Bookshelf, Fantasy Draft Helper, Thinkers, and Softball Lineup.",
   hero: {
     intro: "I am",
     name: "Arko Alex Bhattacharyya",
@@ -23,6 +23,8 @@ export const site = {
     sector: "https://arko-f1-sector.vercel.app",
     bookshelf: "https://arko-bookshelf.pages.dev",
     draft: "https://arko-portfolio.pages.dev/draft/",
+    thinkers: "https://arko-portfolio.pages.dev/thinkers/",
+    softball: "https://arkoalexbhattacharyya.org/softball/",
   },
   projects: [
     {
@@ -86,6 +88,38 @@ export const site = {
         "Private local notes, export/import, and PDF cheat sheets",
       ],
       demoUrl: "https://arko-portfolio.pages.dev/draft/" as string | null,
+      comingSoon: false,
+      github: "https://github.com/alexarkob/website-launch" as string | null,
+    },
+    {
+      id: "thinkers",
+      name: "Thinkers",
+      tagline: "Persona reactions from Packy, Ben, and Benedict",
+      summary:
+        "Content-grounded agents that react to text and files in the style of Packy McCormick, Ben Thompson, and Benedict Evans—short, medium, or long takes.",
+      stack: ["Astro", "React", "Claude", "MiniSearch"],
+      highlights: [
+        "Three independent agent panels with length controls",
+        "Text, image, PDF, and slide attachments",
+        "Public-corpus retrieval (no paywalled newsletter dumps)",
+      ],
+      demoUrl: "https://arko-portfolio.pages.dev/thinkers/" as string | null,
+      comingSoon: false,
+      github: "https://github.com/alexarkob/website-launch" as string | null,
+    },
+    {
+      id: "softball",
+      name: "Softball Lineup",
+      tagline: "Coed slowpitch batting order and 6-inning defense",
+      summary:
+        "A team-password lineup board: roster with preferred positions and walk-up songs, a 3-men-then-1-woman batting order, and a 10-player field for each of 6 innings—with attendance toggles for whoever is out that week.",
+      stack: ["Astro", "React", "TypeScript", "Spotify"],
+      highlights: [
+        "Shared team login; new seasons behind an admin PIN",
+        "Drag-to-edit batting order and inning lineups, with gender-rule warnings",
+        "Spotify walk-up search with a link beside each batter",
+      ],
+      demoUrl: "https://arkoalexbhattacharyya.org/softball/" as string | null,
       comingSoon: false,
       github: "https://github.com/alexarkob/website-launch" as string | null,
     },

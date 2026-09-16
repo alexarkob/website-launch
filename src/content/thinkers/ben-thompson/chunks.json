@@ -1,0 +1,86 @@
+[
+  {
+    "id": "ben-aggregation-theory",
+    "title": "Aggregation Theory (public framing)",
+    "url": "https://stratechery.com/",
+    "date": "2015",
+    "text": "Aggregation Theory describes how digital markets shift power to companies that own demand: they acquire users with a superior experience, then modularize supply. Aggregators benefit from zero marginal distribution costs and increasing returns to scale in users and data. Suppliers compete for access to the aggregator's customers."
+  },
+  {
+    "id": "ben-platforms-vs-aggregators",
+    "title": "Platforms versus aggregators",
+    "url": "https://stratechery.com/",
+    "date": "2017",
+    "text": "Platforms create value by enabling third parties and often share economics with developers. Aggregators extract value by controlling demand and making suppliers interchangeable. Confusing the two leads to bad strategy: treating an aggregator like a platform partner, or expecting platform-like goodwill from a demand owner."
+  },
+  {
+    "id": "ben-integration-modularity",
+    "title": "Integration and modularity cycles",
+    "url": "https://stratechery.com/",
+    "date": "2013",
+    "text": "Tech industries oscillate between integration and modularity. When performance is not good enough, integration wins; when it is good enough, modular layers and competition on price and features emerge. Strategy depends on where the bottleneck is today \u2014 and whether a company should integrate across it or modularize around it."
+  },
+  {
+    "id": "ben-apple-google",
+    "title": "Apple and Google strategic contrast",
+    "url": "https://stratechery.com/",
+    "date": "2016",
+    "text": "Apple integrates hardware, software, and services to differentiate on user experience and capture surplus at the device and services layer. Google aggregates attention and intent, monetizing demand primarily through advertising. Different value chains imply different threats and different M&A logic."
+  },
+  {
+    "id": "ben-publishing",
+    "title": "Publishers and Facebook/Google",
+    "url": "https://stratechery.com/",
+    "date": "2015",
+    "text": "Publishers lost distribution leverage as aggregators owned discovery and attention. Free content plus ad markets push publishers toward commodity supply unless they own a direct relationship (subscriptions, community, brand). The strategic question is whether you compete for aggregators' users or build owned demand."
+  },
+  {
+    "id": "ben-microsoft",
+    "title": "Microsoft's platform shift",
+    "url": "https://stratechery.com/",
+    "date": "2018",
+    "text": "Microsoft's modern success leaned into cloud and being a platform for enterprises rather than solely defending the Windows monopoly mindset. In modular markets, the winner often owns the developer relationship and recurring infrastructure spend."
+  },
+  {
+    "id": "ben-netflix-disney",
+    "title": "Streaming aggregation and content cost",
+    "url": "https://stratechery.com/",
+    "date": "2019",
+    "text": "Streaming looks like aggregation of attention, but content production has high marginal costs and fierce competition for exclusivity. Unlike pure software aggregators, streaming economics are constrained by content spend and churn. Strategy must reconcile demand-side scale with supply-side cost inflation."
+  },
+  {
+    "id": "ben-amazon",
+    "title": "Amazon's retail and AWS logic",
+    "url": "https://stratechery.com/",
+    "date": "2016",
+    "text": "Amazon combines customer obsession on the demand side with infrastructure businesses that monetize scale. Marketplace dynamics modularize merchants while Amazon still differentiates on logistics and trust. AWS shows how internal capabilities can become external platforms with different margins."
+  },
+  {
+    "id": "ben-regulation",
+    "title": "Antitrust and aggregators",
+    "url": "https://stratechery.com/",
+    "date": "2020",
+    "text": "Antitrust aimed at aggregators must grapple with consumer benefit from free or convenient services versus supplier harm and gatekeeping power. Remedies that ignore the demand-side advantage often fail. The analytical starting point is still: who owns the customer?"
+  },
+  {
+    "id": "ben-ai-strategy",
+    "title": "AI through a value-chain lens",
+    "url": "https://stratechery.com/",
+    "date": "2023",
+    "text": "AI strategy questions map to familiar ones: is the model a commodity modular layer, or does integration with data, UX, and distribution create differentiation? Chip supply, cloud distribution, and application ownership may matter more than model demos. Ask where scarcity and customer lock-in actually sit."
+  },
+  {
+    "id": "ben-china-tech",
+    "title": "China tech and super-apps",
+    "url": "https://stratechery.com/",
+    "date": "2018",
+    "text": "China's internet developed with different payment rails, messaging defaults, and regulatory constraints, producing super-app patterns less common in the West. Comparative analysis should start from local value chains and user behavior, not US product analogies alone."
+  },
+  {
+    "id": "ben-advertising",
+    "title": "Advertising as the business model",
+    "url": "https://stratechery.com/",
+    "date": "2014",
+    "text": "When the product is free, advertisers are often the true customers. That reshapes product incentives toward engagement and targeting. Understanding who pays clarifies why a company ships certain features and resists others."
+  }
+]

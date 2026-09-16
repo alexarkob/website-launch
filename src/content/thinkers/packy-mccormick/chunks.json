@@ -1,0 +1,86 @@
+[
+  {
+    "id": "packy-power-laws",
+    "title": "Power laws in startups and markets",
+    "url": "https://www.notboring.co/",
+    "date": "2021",
+    "text": "In tech and venture, outcomes are power-law distributed: a small number of companies and bets produce most of the returns. Feedback loops in distribution, data, and capital amplify early leads. The non-obvious implication is that average outcomes are a bad guide \u2014 you underwrite upside and survivable downside, then stay open to compounding winners."
+  },
+  {
+    "id": "packy-not-boring-thesis",
+    "title": "Technology makes interesting things possible",
+    "url": "https://www.notboring.co/",
+    "date": "2020",
+    "text": "The Not Boring lens treats technology as a force that expands the opportunity set for builders and investors. New infrastructure (compute, APIs, platforms) lowers the cost of experimentation, which increases the number of ambitious attempts. The story worth telling is usually the second-order effect: not that a tool exists, but who gets to build with it and what markets reorganize."
+  },
+  {
+    "id": "packy-writing-as-product",
+    "title": "Writing, audience, and compounding media",
+    "url": "https://www.notboring.co/",
+    "date": "2022",
+    "text": "Independent media businesses can compound when writing creates trust, trust creates dealflow and partnerships, and those create better writing. Audience is not just distribution \u2014 it is a flywheel input. The best tech writing teaches a framework while also being entertaining enough that people forward it."
+  },
+  {
+    "id": "packy-web3-skepticism-optimism",
+    "title": "Crypto cycles and builder signal",
+    "url": "https://www.notboring.co/",
+    "date": "2022",
+    "text": "Crypto markets swing between narrative excess and quiet building. Power-law dynamics still apply: most tokens and projects fail, while a few protocols and companies may capture lasting value if they solve real coordination or ownership problems. Separate price action from whether incentives create durable user behavior."
+  },
+  {
+    "id": "packy-ai-builders",
+    "title": "AI as a new building block",
+    "url": "https://www.notboring.co/",
+    "date": "2023",
+    "text": "Foundation models are a new primitive: they compress expertise into an API. Winners may look like those who own distribution, proprietary data workflows, or trust in high-stakes domains \u2014 not merely those who wrap a model. Evaluate AI products on whether they create a loop that improves with use."
+  },
+  {
+    "id": "packy-markets-narratives",
+    "title": "Narratives versus unit economics",
+    "url": "https://www.notboring.co/",
+    "date": "2021",
+    "text": "Markets trade narratives, but companies survive on unit economics and distribution. A useful take names both: what story is pulling capital and attention, and what must be true in the business for that story to become a durable franchise."
+  },
+  {
+    "id": "packy-competition",
+    "title": "Competition and escape velocity",
+    "url": "https://www.notboring.co/",
+    "date": "2020",
+    "text": "In software, competition is not always zero-sum. Platforms expand the pie while individual categories still concentrate. Escape velocity comes from owning a wedge that expands into a system \u2014 product, community, data, or brand \u2014 that rivals cannot cheaply copy."
+  },
+  {
+    "id": "packy-investing-lens",
+    "title": "Investing with asymmetric upside",
+    "url": "https://www.notboring.co/",
+    "date": "2021",
+    "text": "Asymmetric bets require clarity on what can go right at scale and what kills the company early. Look for teams that understand distribution as deeply as product. In power-law worlds, missing the outlier is more expensive than being wrong on many small experiments."
+  },
+  {
+    "id": "packy-consumer-tech",
+    "title": "Consumer products and cultural timing",
+    "url": "https://www.notboring.co/",
+    "date": "2022",
+    "text": "Consumer tech hits when technology capability meets cultural readiness. Timing is a first-class variable: too early looks like a toy; too late looks like a feature. The interesting analysis is why this decade's users behave differently than last decade's."
+  },
+  {
+    "id": "packy-b2b-platforms",
+    "title": "B2B platforms and ecosystem gravity",
+    "url": "https://www.notboring.co/",
+    "date": "2023",
+    "text": "B2B platforms win when they become the system of record or the workflow spine. Gravity comes from integrations, switching costs, and an ecosystem that brings customers more value than any single vendor. Evaluate whether a company is a tool or the place work happens."
+  },
+  {
+    "id": "packy-optimism",
+    "title": "Constructive optimism",
+    "url": "https://www.notboring.co/",
+    "date": "2020",
+    "text": "Optimism is a thesis that humans can invent useful things and markets can reward them \u2014 not denial of risk. The interesting writing finds the non-obvious path from today's constraints to tomorrow's defaults."
+  },
+  {
+    "id": "packy-distribution",
+    "title": "Distribution is strategy",
+    "url": "https://www.notboring.co/",
+    "date": "2021",
+    "text": "Great products without distribution are hobbies. In modern tech, distribution can be SEO, marketplaces, sales machines, communities, or platform partnerships. Ask who owns the customer relationship and whether that ownership compounds."
+  }
+]
