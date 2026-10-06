@@ -328,6 +328,59 @@ html[data-sb-theme="dark"] {
   margin-bottom: 1rem;
 }
 
+.sb-admin-notes {
+  margin: 1.5rem 0 0;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--sb-line);
+  border-radius: 0.4rem;
+  background: var(--sb-surface);
+}
+
+.sb-admin-notes h2 {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.sb-admin-notes .sb-toolbar {
+  margin-bottom: 0.7rem;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+.sb-admin-notes .sb-toolbar > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sb-admin-notes__field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.sb-admin-notes textarea {
+  width: 100%;
+  min-height: 6.5rem;
+  resize: vertical;
+  font: inherit;
+  font-weight: 400;
+  line-height: 1.45;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--sb-line);
+  border-radius: 0.3rem;
+  background: var(--sb-surface-2);
+  color: inherit;
+}
+
+.sb-admin-notes .sb-toolbar .sb-btn {
+  min-height: 2.75rem;
+  flex-shrink: 0;
+}
+
+.sb-admin-notes .sb-banner {
+  margin: 0.35rem 0 0;
+}
+
 .sb-view-toggle {
   display: flex;
   border: 1px solid var(--sb-line);

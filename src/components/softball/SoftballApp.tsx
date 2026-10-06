@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { newPlayer, syncAttendance } from "../../lib/softball/attendance";
 import { ensureWeekOrder, generateBattingOrder } from "../../lib/softball/batting";
-import { generateFielding } from "../../lib/softball/fielding";
 import type { TeamPublic, TeamState } from "../../lib/softball/types";
 import { BattingOrder } from "./BattingOrder";
 import { FieldingLineups } from "./FieldingLineups";
 import { LoginGate } from "./LoginGate";
 import { RosterTable } from "./RosterTable";
-import { loadState, logout, saveState, verifyAdminPin } from "./api";
+import { generateFieldingLineups, loadState, logout, saveState, verifyAdminPin } from "./api";
 
 type Tab = "roster" | "batting" | "fielding";
 
@@ -26,9 +25,14 @@ export default function SoftballApp() {
   const [error, setError] = useState<string | null>(null);
   const [saveLabel, setSaveLabel] = useState("Saved");
   const [fieldingNotes, setFieldingNotes] = useState<string[]>([]);
+  const [fieldingLogicNotes, setFieldingLogicNotes] = useState("");
+  const fieldingLogicNotesRef = useRef("");
   const skipSave = useRef(true);
   const adminPinRef = useRef<string | null>(null);
   const [canEditIdeal, setCanEditIdeal] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesLocking, setNotesLocking] = useState(false);
+  const [notesSubmitted, setNotesSubmitted] = useState(false);
 
   async function hydrate() {
     setError(null);
@@ -61,12 +65,19 @@ export default function SoftballApp() {
     }
     setSaveLabel("Saving…");
     const timer = window.setTimeout(() => {
-      saveState(state, adminPinRef.current ?? undefined)
+      const adminPin = adminPinRef.current ?? undefined;
+      saveState(state, {
+        adminPin,
+        fieldingLogicNotes: adminPin ? fieldingLogicNotesRef.current : undefined,
+      })
         .then(() => {
           setSaveLabel("Saved");
           if (state.idealBattingLocked) {
             adminPinRef.current = null;
             setCanEditIdeal(false);
+            fieldingLogicNotesRef.current = "";
+            setFieldingLogicNotes("");
+            setNotesOpen(false);
           }
         })
         .catch((err: unknown) => {
@@ -90,6 +101,64 @@ export default function SoftballApp() {
     patchState((prev) => syncAttendance(prev, roster));
   }
 
+  async function generateDefense(roster: TeamState["roster"]) {
+    const adminPin = adminPinRef.current ?? undefined;
+    return generateFieldingLineups(
+      roster,
+      adminPin ? { adminPin, fieldingLogicNotes: fieldingLogicNotesRef.current } : undefined,
+    );
+  }
+
+  async function persistNotes(notes: string) {
+    const adminPin = adminPinRef.current;
+    if (!state || !adminPin) {
+      throw new Error("Unlock with the admin PIN first.");
+    }
+    setSaveLabel("Saving…");
+    fieldingLogicNotesRef.current = notes;
+    await saveState(state, { adminPin, fieldingLogicNotes: notes });
+    setSaveLabel("Saved");
+  }
+
+  async function handleSaveNotes(notes: string) {
+    try {
+      await persistNotes(notes);
+      setFieldingLogicNotes(notes);
+    } catch (err) {
+      setSaveLabel("Save failed");
+      setError(err instanceof Error ? err.message : "Could not save notes.");
+      throw err;
+    }
+  }
+
+  async function handleLockNotes(notes: string) {
+    setNotesLocking(true);
+    try {
+      await persistNotes(notes);
+      setFieldingLogicNotes("");
+      setNotesOpen(false);
+      setNotesSubmitted(true);
+    } catch (err) {
+      setSaveLabel("Save failed");
+      setError(err instanceof Error ? err.message : "Could not lock notes.");
+      throw err;
+    } finally {
+      setNotesLocking(false);
+    }
+  }
+
+  async function handleAdminUnlock(adminPin: string) {
+    const unlocked = await verifyAdminPin(adminPin);
+    adminPinRef.current = adminPin;
+    skipSave.current = true;
+    fieldingLogicNotesRef.current = unlocked.fieldingLogicNotes;
+    setFieldingLogicNotes(unlocked.fieldingLogicNotes);
+    setNotesOpen(true);
+    setNotesSubmitted(false);
+    setCanEditIdeal(true);
+    patchState((prev) => ({ ...prev, idealBattingLocked: false }));
+  }
+
   function handleGenerateBatting() {
     patchState((prev) => ({
       ...prev,
@@ -98,23 +167,31 @@ export default function SoftballApp() {
     }));
   }
 
-  function handleGenerateFielding() {
+  async function handleGenerateFielding() {
     if (!state) return;
-    const result = generateFielding(state.roster);
-    setFieldingNotes(result.warnings);
-    patchState((prev) => ({ ...prev, innings: result.innings, needsRegen: false }));
+    try {
+      const result = await generateDefense(state.roster);
+      setFieldingNotes([...result.warnings, ...(result.noteWarnings ?? [])]);
+      patchState((prev) => ({ ...prev, innings: result.innings, needsRegen: false }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not generate fielding.");
+    }
   }
 
-  function handleRegenBoth() {
+  async function handleRegenBoth() {
     if (!state) return;
-    const result = generateFielding(state.roster);
-    setFieldingNotes(result.warnings);
-    patchState((prev) => ({
-      ...prev,
-      battingOrder: generateBattingOrder(prev.roster, prev.idealBattingOrder),
-      innings: result.innings,
-      needsRegen: false,
-    }));
+    try {
+      const result = await generateDefense(state.roster);
+      setFieldingNotes([...result.warnings, ...(result.noteWarnings ?? [])]);
+      patchState((prev) => ({
+        ...prev,
+        battingOrder: generateBattingOrder(prev.roster, prev.idealBattingOrder),
+        innings: result.innings,
+        needsRegen: false,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not generate lineups.");
+    }
   }
 
   async function handleLogout() {
@@ -124,6 +201,10 @@ export default function SoftballApp() {
     skipSave.current = true;
     adminPinRef.current = null;
     setCanEditIdeal(false);
+    setFieldingLogicNotes("");
+    fieldingLogicNotesRef.current = "";
+    setNotesOpen(false);
+    setNotesSubmitted(false);
   }
 
   if (!ready) {
@@ -210,20 +291,22 @@ export default function SoftballApp() {
                 }))
               }
               onGenerate={handleGenerateBatting}
-              onUnlock={async (adminPin) => {
-                await verifyAdminPin(adminPin);
-                adminPinRef.current = adminPin;
-                setCanEditIdeal(true);
-                patchState((prev) => ({ ...prev, idealBattingLocked: false }));
-              }}
+              onUnlock={handleAdminUnlock}
               onLock={() => patchState((prev) => ({ ...prev, idealBattingLocked: true }))}
             />
           )}
           {tab === "fielding" && (
             <FieldingLineups
               state={state}
+              notesOpen={notesOpen}
+              fieldingLogicNotes={fieldingLogicNotes}
+              notesLocking={notesLocking}
+              notesSubmitted={notesSubmitted}
+              onSaveNotes={handleSaveNotes}
+              onLockNotes={handleLockNotes}
+              onUnlock={handleAdminUnlock}
               onInningsChange={(innings) => patchState((prev) => ({ ...prev, innings }))}
-              onGenerate={handleGenerateFielding}
+              onGenerate={() => void handleGenerateFielding()}
               generateWarnings={fieldingNotes}
             />
           )}

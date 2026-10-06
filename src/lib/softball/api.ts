@@ -12,6 +12,8 @@ import {
 } from "./auth";
 import { parseClientState } from "./parseState";
 import { ensureIdealOrder, ensureWeekOrder, uniqueFirst } from "./batting";
+import { generateFielding } from "./fielding";
+import { clipFieldingNotes } from "./fieldingNotes";
 import {
   authorizeUrl,
   exchangeCode,
@@ -181,12 +183,12 @@ export async function handleSoftballRequest(
     }
 
     if (route === "/admin" && method === "POST") {
-      await requireTeam(request, env, store);
+      const team = await requireTeam(request, env, store);
       const body = await readJson(request);
       if (!adminPinOk(env, body.adminPin)) {
         throw new SoftballApiError(403, "Admin PIN is incorrect.");
       }
-      return json({ ok: true });
+      return json({ ok: true, fieldingLogicNotes: team.fieldingLogicNotes ?? "" });
     }
 
     if (route === "/state" && method === "GET") {
@@ -205,6 +207,9 @@ export async function handleSoftballRequest(
       const storedLocked = team.state.idealBattingLocked !== false;
       const canEditIdeal = adminOk || storedLocked === false;
       const seed = storedIdeal.length ? storedIdeal : uniqueFirst(incoming.battingOrder);
+      if (adminOk && typeof body.fieldingLogicNotes === "string") {
+        team.fieldingLogicNotes = clipFieldingNotes(body.fieldingLogicNotes);
+      }
       team.state = {
         ...incoming,
         battingOrder: ensureWeekOrder(incoming.roster, incoming.battingOrder),
@@ -216,6 +221,25 @@ export async function handleSoftballRequest(
       };
       await store.putTeam(team);
       return json(clientPayload(team));
+    }
+
+    if (route === "/fielding/generate" && method === "POST") {
+      const team = await requireTeam(request, env, store);
+      const body = await readJson(request);
+      const parsed = parseClientState({
+        roster: Array.isArray(body.roster) ? body.roster : team.state.roster,
+      });
+      const roster = parsed.roster.length ? parsed.roster : team.state.roster;
+      const notes = adminPinOk(env, body.adminPin)
+        ? clipFieldingNotes(body.fieldingLogicNotes ?? team.fieldingLogicNotes ?? "")
+        : (team.fieldingLogicNotes ?? "");
+      const result = generateFielding(roster, notes);
+      const admin = adminPinOk(env, body.adminPin);
+      return json({
+        innings: result.innings,
+        warnings: result.warnings,
+        noteWarnings: admin ? result.noteWarnings : [],
+      });
     }
 
     if (route === "/spotify/search" && method === "GET") {

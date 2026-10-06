@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -9,6 +9,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { battingRuleWarning, ensureIdealOrder, ensureWeekOrder } from "../../lib/softball/batting";
 import { playersById, type Player, type TeamState, type WalkUpSong } from "../../lib/softball/types";
+import { UnlockForm } from "./UnlockForm";
 import { useSoftballDndSensors } from "./useSoftballDndSensors";
 
 interface Props {
@@ -196,47 +197,6 @@ function SortableBatter({
   );
 }
 
-function UnlockForm({ onUnlock }: { onUnlock: (adminPin: string) => Promise<void> }) {
-  const [pin, setPin] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await onUnlock(pin);
-      setPin("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not unlock.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form className="sb-unlock" onSubmit={(event) => void handleSubmit(event)}>
-      <label className="sb-sr" htmlFor="sb-admin-pin">
-        Admin PIN
-      </label>
-      <input
-        id="sb-admin-pin"
-        type="password"
-        value={pin}
-        onChange={(e) => setPin(e.target.value)}
-        placeholder="Admin PIN"
-        autoComplete="off"
-        required
-      />
-      <button type="submit" className="sb-btn" disabled={busy || !pin}>
-        Unlock
-      </button>
-      {error && <p className="sb-tiny-warn">{error}</p>}
-    </form>
-  );
-}
-
 export function BattingOrder({
   state,
   canEditIdeal,
@@ -317,6 +277,54 @@ export function BattingOrder({
       <section className="sb-batting-section">
         <div className="sb-toolbar">
           <div>
+            <h2>This week’s order</h2>
+            <p className="sb-muted">
+              Present players only, 3 men then 1 woman, as close as possible to the ideal lineup.
+              Use the three-dot menu on the right to duplicate or delete a slot. Every present
+              player has to stay in the order at least once.
+            </p>
+          </div>
+          <button type="button" className="sb-btn sb-btn--primary" onClick={onGenerate}>
+            Generate this week’s order
+          </button>
+        </div>
+        {warning && <p className="sb-banner sb-banner--warn">{warning}</p>}
+        {weekDeleteWarn && <p className="sb-banner sb-banner--warn">{weekDeleteWarn}</p>}
+        {weekPlayers.length === 0 ? (
+          <p className="sb-muted">Generate an order from everyone marked present this week.</p>
+        ) : (
+          <DndContext
+            sensors={weekSensors.sensors}
+            collisionDetection={closestCenter}
+            autoScroll={weekSensors.autoScroll}
+            onDragEnd={handleWeekDragEnd}
+          >
+            <SortableContext items={weekItems} strategy={verticalListSortingStrategy}>
+              <ol className="sb-order">
+                {weekIds.map((playerId, index) => (
+                  <SortableBatter
+                    key={weekItems[index]}
+                    id={weekItems[index]}
+                    index={index}
+                    player={byId.get(playerId)}
+                    canDrag
+                    showMenu
+                    openMenuId={openMenuId}
+                    onToggleMenu={() => setOpenMenuId((current) => (current === weekItems[index] ? null : weekItems[index]))}
+                    onCloseMenu={() => setOpenMenuId(null)}
+                    onDuplicate={() => onWeekChange(duplicateAt(weekIds, index))}
+                    onDelete={() => handleWeekDelete(index)}
+                  />
+                ))}
+              </ol>
+            </SortableContext>
+          </DndContext>
+        )}
+      </section>
+
+      <section className="sb-batting-section">
+        <div className="sb-toolbar">
+          <div>
             <h2>Ideal batting order</h2>
             <p className="sb-muted">
               Season lineup for every player. Unlock with the admin PIN to reorder, then lock it.
@@ -357,54 +365,6 @@ export function BattingOrder({
                     onCloseMenu={() => setOpenMenuId(null)}
                     onDuplicate={() => onIdealChange(duplicateAt(idealIds, index))}
                     onDelete={() => handleIdealDelete(index)}
-                  />
-                ))}
-              </ol>
-            </SortableContext>
-          </DndContext>
-        )}
-      </section>
-
-      <section className="sb-batting-section">
-        <div className="sb-toolbar">
-          <div>
-            <h2>This week’s order</h2>
-            <p className="sb-muted">
-              Present players only, 3 men then 1 woman, as close as possible to the ideal lineup.
-              Use the three-dot menu on the right to duplicate or delete a slot. Every present
-              player has to stay in the order at least once.
-            </p>
-          </div>
-          <button type="button" className="sb-btn sb-btn--primary" onClick={onGenerate}>
-            Generate this week’s order
-          </button>
-        </div>
-        {warning && <p className="sb-banner sb-banner--warn">{warning}</p>}
-        {weekDeleteWarn && <p className="sb-banner sb-banner--warn">{weekDeleteWarn}</p>}
-        {weekPlayers.length === 0 ? (
-          <p className="sb-muted">Generate an order from everyone marked present this week.</p>
-        ) : (
-          <DndContext
-            sensors={weekSensors.sensors}
-            collisionDetection={closestCenter}
-            autoScroll={weekSensors.autoScroll}
-            onDragEnd={handleWeekDragEnd}
-          >
-            <SortableContext items={weekItems} strategy={verticalListSortingStrategy}>
-              <ol className="sb-order">
-                {weekIds.map((playerId, index) => (
-                  <SortableBatter
-                    key={weekItems[index]}
-                    id={weekItems[index]}
-                    index={index}
-                    player={byId.get(playerId)}
-                    canDrag
-                    showMenu
-                    openMenuId={openMenuId}
-                    onToggleMenu={() => setOpenMenuId((current) => (current === weekItems[index] ? null : weekItems[index]))}
-                    onCloseMenu={() => setOpenMenuId(null)}
-                    onDuplicate={() => onWeekChange(duplicateAt(weekIds, index))}
-                    onDelete={() => handleWeekDelete(index)}
                   />
                 ))}
               </ol>

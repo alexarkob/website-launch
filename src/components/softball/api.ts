@@ -50,18 +50,26 @@ export async function loadState(): Promise<ClientTeamPayload | null> {
   return (await res.json()) as ClientTeamPayload;
 }
 
-export async function saveState(state: TeamState, adminPin?: string): Promise<ClientTeamPayload> {
+export async function saveState(
+  state: TeamState,
+  extras?: { adminPin?: string; fieldingLogicNotes?: string },
+): Promise<ClientTeamPayload> {
+  const payload: Record<string, unknown> = { ...state };
+  if (extras?.adminPin) payload.adminPin = extras.adminPin;
+  if (extras?.adminPin && extras.fieldingLogicNotes !== undefined) {
+    payload.fieldingLogicNotes = extras.fieldingLogicNotes;
+  }
   const res = await fetch("/api/softball/state", {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(adminPin ? { ...state, adminPin } : state),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(await parseError(res));
   return (await res.json()) as ClientTeamPayload;
 }
 
-export async function verifyAdminPin(adminPin: string): Promise<void> {
+export async function verifyAdminPin(adminPin: string): Promise<{ fieldingLogicNotes: string }> {
   const res = await fetch("/api/softball/admin", {
     method: "POST",
     credentials: "include",
@@ -69,6 +77,30 @@ export async function verifyAdminPin(adminPin: string): Promise<void> {
     body: JSON.stringify({ adminPin }),
   });
   if (!res.ok) throw new Error(await parseError(res));
+  const body = (await res.json()) as { fieldingLogicNotes?: string };
+  return { fieldingLogicNotes: body.fieldingLogicNotes ?? "" };
+}
+
+export async function generateFieldingLineups(
+  roster: TeamState["roster"],
+  extras?: { adminPin?: string; fieldingLogicNotes?: string },
+): Promise<{ innings: TeamState["innings"]; warnings: string[]; noteWarnings: string[] }> {
+  const res = await fetch("/api/softball/fielding/generate", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      roster,
+      adminPin: extras?.adminPin,
+      fieldingLogicNotes: extras?.fieldingLogicNotes,
+    }),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return (await res.json()) as {
+    innings: TeamState["innings"];
+    warnings: string[];
+    noteWarnings: string[];
+  };
 }
 
 export async function logout(): Promise<void> {

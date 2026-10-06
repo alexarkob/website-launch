@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DndContext,
   useDroppable,
@@ -6,7 +6,9 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { UnlockForm } from "./UnlockForm";
 import { useSoftballDndSensors } from "./useSoftballDndSensors";
+import { FIELDING_NOTES_MAX } from "../../lib/softball/fieldingNotes";
 import {
   inningsPlayed,
   menOnField,
@@ -28,6 +30,13 @@ import {
 
 interface Props {
   state: TeamState;
+  notesOpen: boolean;
+  fieldingLogicNotes: string;
+  notesLocking?: boolean;
+  notesSubmitted?: boolean;
+  onSaveNotes: (notes: string) => void | Promise<void>;
+  onLockNotes: (notes: string) => void | Promise<void>;
+  onUnlock: (adminPin: string) => Promise<void>;
   onInningsChange: (innings: FieldingInning[]) => void;
   onGenerate: () => void;
   generateWarnings: string[];
@@ -276,10 +285,28 @@ function InningBoard({
   );
 }
 
-export function FieldingLineups({ state, onInningsChange, onGenerate, generateWarnings }: Props) {
+export function FieldingLineups({
+  state,
+  notesOpen,
+  fieldingLogicNotes,
+  notesLocking = false,
+  notesSubmitted = false,
+  onSaveNotes,
+  onLockNotes,
+  onUnlock,
+  onInningsChange,
+  onGenerate,
+  generateWarnings,
+}: Props) {
   const present = presentPlayers(state.roster);
   const target = present.length === 0 ? 0 : Math.round((INNING_COUNT * 10) / present.length);
   const [view, setView] = useState<FieldingView>(readView);
+  const [draftNotes, setDraftNotes] = useState(fieldingLogicNotes);
+  const dirty = draftNotes !== fieldingLogicNotes;
+
+  useEffect(() => {
+    setDraftNotes(fieldingLogicNotes);
+  }, [fieldingLogicNotes, notesOpen]);
 
   function setLayout(next: FieldingView) {
     setView(next);
@@ -290,10 +317,23 @@ export function FieldingLineups({ state, onInningsChange, onGenerate, generateWa
     }
   }
 
+  function handleGenerate() {
+    void (async () => {
+      if (notesOpen && dirty) {
+        try {
+          await onSaveNotes(draftNotes);
+        } catch {
+          return;
+        }
+      }
+      onGenerate();
+    })();
+  }
+
   return (
     <div className="sb-fielding">
       <div className="sb-toolbar">
-        <button type="button" className="sb-btn sb-btn--primary" onClick={onGenerate}>
+        <button type="button" className="sb-btn sb-btn--primary" onClick={handleGenerate}>
           Generate 6-inning lineup
         </button>
         <div className="sb-view-toggle" role="group" aria-label="Fielding layout">
@@ -352,6 +392,56 @@ export function FieldingLineups({ state, onInningsChange, onGenerate, generateWa
           }}
         />
       ))}
+      <section className="sb-admin-notes">
+        <div className="sb-toolbar">
+          <div>
+            <h2>Admin Lineup Notes</h2>
+            {notesOpen ? (
+              <p className="sb-muted">
+                Only you can see these after the admin PIN. Lock to hide them and apply them to
+                lineup generation.
+              </p>
+            ) : notesSubmitted ? (
+              <p className="sb-banner sb-banner--soft">
+                Your notes have been submitted into the logic.
+              </p>
+            ) : (
+              <p className="sb-muted">
+                Unlock with the admin PIN to add notes that nobody else can see. They steer how
+                lineups are generated.
+              </p>
+            )}
+          </div>
+          {notesOpen ? (
+            <button
+              type="button"
+              className="sb-btn sb-btn--primary"
+              disabled={notesLocking}
+              onClick={() => void onLockNotes(draftNotes).catch(() => {})}
+            >
+              {notesLocking ? "Locking…" : "Lock"}
+            </button>
+          ) : (
+            <UnlockForm inputId="sb-fielding-admin-pin" onUnlock={onUnlock} />
+          )}
+        </div>
+        {notesOpen && (
+          <div className="sb-admin-notes__field">
+            <label>
+              <span className="sb-sr">Admin lineup notes</span>
+              <textarea
+                value={draftNotes}
+                onChange={(event) => setDraftNotes(event.target.value.slice(0, FIELDING_NOTES_MAX))}
+                rows={5}
+                maxLength={FIELDING_NOTES_MAX}
+                placeholder={
+                  "Examples:\nIdeally Aaron, Dean, and Delanie will be in a variation across RF, LC, and 2B.\nIf Ben is playing, he should only play catcher.\nJade, Kate, and Lia should only be in LF, LC, and RF."
+                }
+              />
+            </label>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -87,6 +87,8 @@ export interface TeamRecord {
   spotifyRefreshToken?: string;
   spotifyPlaylistId?: string;
   spotifyPlaylistUrl?: string;
+  /** Admin-only fielding generation notes. Never sent in the public client payload. */
+  fieldingLogicNotes?: string;
   state: Omit<TeamState, "spotify">;
   createdAt: string;
 }
