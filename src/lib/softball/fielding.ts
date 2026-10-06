@@ -1,4 +1,8 @@
-import { parseFieldingNotes, type FieldingConstraint } from "./fieldingNotes";
+import {
+  preferredSpots,
+  rankOf,
+  type FieldingPositionOrder,
+} from "./fieldingPositionOrder";
 import {
   FIELD_SPOTS,
   INNING_COUNT,
@@ -19,7 +23,6 @@ const FLEX_POSITIONS: Position[] = ["RC", "RF"];
 export interface FieldingGenerateResult {
   innings: FieldingInning[];
   warnings: string[];
-  noteWarnings: string[];
 }
 
 function countMen(players: Player[]): number {
@@ -37,120 +40,20 @@ function sortByPlayTime(players: Player[], played: Map<string, number>): Player[
   );
 }
 
-function covers(player: Player, position: Position): boolean {
-  return player.positions.includes(position);
+function covers(player: Player, position: Position, order: FieldingPositionOrder = {}): boolean {
+  return preferredSpots(player, order).includes(position);
 }
 
-function sortByScarcity(positions: Position[], remaining: Player[]): Position[] {
+function sortByScarcity(
+  positions: Position[],
+  remaining: Player[],
+  order: FieldingPositionOrder = {},
+): Position[] {
   return [...positions].sort((a, b) => {
-    const aCount = remaining.filter((player) => covers(player, a)).length;
-    const bCount = remaining.filter((player) => covers(player, b)).length;
+    const aCount = remaining.filter((player) => covers(player, a, order)).length;
+    const bCount = remaining.filter((player) => covers(player, b, order)).length;
     return aCount - bCount || positions.indexOf(a) - positions.indexOf(b);
   });
-}
-
-function avoids(player: Player, position: Position, constraints: FieldingConstraint[]): boolean {
-  if (
-    constraints.some(
-      (constraint) =>
-        constraint.type === "avoid" &&
-        constraint.playerIds.includes(player.id) &&
-        constraint.positions.includes(position),
-    )
-  ) {
-    return true;
-  }
-  const limited = onlyPositions(player, constraints);
-  return Boolean(limited && !limited.includes(position));
-}
-
-function prefers(player: Player, position: Position, constraints: FieldingConstraint[]): boolean {
-  return constraints.some(
-    (constraint) =>
-      constraint.type === "prefer" &&
-      constraint.playerIds.includes(player.id) &&
-      constraint.positions.includes(position),
-  );
-}
-
-function onlyPositions(player: Player, constraints: FieldingConstraint[]): Position[] | null {
-  const hits = constraints.filter(
-    (constraint) => constraint.type === "only" && constraint.playerIds.includes(player.id),
-  );
-  if (!hits.length) return null;
-  return [...new Set(hits.flatMap((constraint) => constraint.positions))];
-}
-
-function rotatePlayerIds(constraints: FieldingConstraint[]): string[] {
-  const ids = new Set<string>();
-  for (const constraint of constraints) {
-    if (constraint.type === "rotate") {
-      for (const id of constraint.playerIds) ids.add(id);
-    }
-  }
-  return [...ids];
-}
-
-function pickForPosition(
-  remaining: Player[],
-  position: Position,
-  played: Map<string, number>,
-  allowUnpreferred: boolean,
-  constraints: FieldingConstraint[] = [],
-): Player | null {
-  const eligible = remaining.filter((player) => !avoids(player, position, constraints));
-  const preferred = eligible.filter(
-    (player) => covers(player, position) || prefers(player, position, constraints),
-  );
-  const pool = preferred.length ? preferred : allowUnpreferred ? eligible : [];
-  if (!pool.length) return null;
-  const sorted = [...pool].sort(
-    (a, b) =>
-      Number(prefers(b, position, constraints)) - Number(prefers(a, position, constraints)) ||
-      playedOf(played, a.id) - playedOf(played, b.id) ||
-      a.positions.length - b.positions.length ||
-      a.name.localeCompare(b.name) ||
-      a.id.localeCompare(b.id),
-  );
-  return sorted[0] ?? null;
-}
-
-function placeRotations(
-  defense: Defense,
-  remaining: Player[],
-  constraints: FieldingConstraint[],
-  inningIndex: number,
-): Player[] {
-  let left = [...remaining];
-  for (const constraint of constraints) {
-    if (constraint.type !== "rotate") continue;
-    const members = constraint.playerIds
-      .map((id) => left.find((player) => player.id === id))
-      .filter((player): player is Player => Boolean(player));
-    const positions = constraint.positions.filter((position) => !defense[position]);
-    if (!members.length || !positions.length) continue;
-
-    if (members.length === positions.length) {
-      for (let i = 0; i < members.length; i++) {
-        const position = positions[(i + inningIndex) % positions.length];
-        if (defense[position]) continue;
-        defense[position] = members[i].id;
-        left = left.filter((player) => player.id !== members[i].id);
-      }
-      continue;
-    }
-
-    const seats = Math.min(members.length, positions.length);
-    const start = inningIndex % members.length;
-    for (let i = 0; i < seats; i++) {
-      const player = members[(start + i) % members.length];
-      const position = positions[i % positions.length];
-      if (!player || defense[position] || !left.some((item) => item.id === player.id)) continue;
-      defense[position] = player.id;
-      left = left.filter((item) => item.id !== player.id);
-    }
-  }
-  return left;
 }
 
 function timesAt(history: Defense[], playerId: string, position: Position): number {
@@ -161,137 +64,45 @@ function timesAt(history: Defense[], playerId: string, position: Position): numb
   return count;
 }
 
-function pickLeastUsedAllowed(
-  positions: Position[],
-  defense: Defense,
-  playerId: string,
-  history: Defense[],
-): Position | null {
-  const empty = positions.filter((position) => !defense[position]);
-  if (!empty.length) return null;
-  return (
-    [...empty].sort(
-      (a, b) =>
-        timesAt(history, playerId, a) - timesAt(history, playerId, b) ||
-        positions.indexOf(a) - positions.indexOf(b),
-    )[0] ?? null
-  );
-}
-
-function placeOnly(
-  defense: Defense,
+function pickForPosition(
   remaining: Player[],
-  constraints: FieldingConstraint[],
-  inningIndex: number,
-  history: Defense[] = [],
-): Player[] {
-  let left = [...remaining];
-  const rotateIds = new Set(rotatePlayerIds(constraints));
-
-  for (const constraint of constraints) {
-    if (constraint.type !== "only") continue;
-    const members = constraint.playerIds
-      .map((id) => left.find((player) => player.id === id))
-      .filter((player): player is Player => Boolean(player));
-    if (!members.length) continue;
-
-    if (members.length === 1 && constraint.positions.length === 1) {
-      const player = members[0];
-      const position = constraint.positions[0];
-      const occupantId = defense[position];
-      if (!occupantId) {
-        defense[position] = player.id;
-        left = left.filter((item) => item.id !== player.id);
-      } else if (occupantId !== player.id && !rotateIds.has(occupantId)) {
-        defense[position] = player.id;
-        left = left.filter((item) => item.id !== player.id);
-        const occupant = remaining.find((item) => item.id === occupantId);
-        if (occupant) left.push(occupant);
-      }
-      continue;
-    }
-
-    if (members.length === 1) {
-      const player = members[0];
-      const position = pickLeastUsedAllowed(constraint.positions, defense, player.id, history);
-      if (!position) continue;
-      defense[position] = player.id;
-      left = left.filter((item) => item.id !== player.id);
-      continue;
-    }
-
-    const start = inningIndex % members.length;
-    const seats = Math.min(
-      members.length,
-      constraint.positions.filter((position) => !defense[position]).length,
-    );
-    for (let i = 0; i < seats; i++) {
-      const player = members[(start + i) % members.length];
-      if (!player || !left.some((item) => item.id === player.id)) continue;
-      const position = pickLeastUsedAllowed(constraint.positions, defense, player.id, history);
-      if (!position) continue;
-      defense[position] = player.id;
-      left = left.filter((item) => item.id !== player.id);
-    }
-  }
-  return left;
-}
-
-function forceRotateOnField(
-  selected: Player[],
-  present: Player[],
-  constraints: FieldingConstraint[],
+  position: Position,
   played: Map<string, number>,
-): Player[] {
-  const neededIds = rotatePlayerIds(constraints);
-  if (!neededIds.length) return selected;
-  const presentById = new Map(present.map((player) => [player.id, player]));
-  let current = [...selected];
-
-  for (const id of neededIds) {
-    const player = presentById.get(id);
-    if (!player || current.some((item) => item.id === player.id)) continue;
-    if (current.length < FIELD_SPOTS) {
-      if (player.gender === "male" && countMen(current) >= MAX_MEN_ON_FIELD) {
-        const swapMen = [...current]
-          .filter((item) => item.gender === "male" && !neededIds.includes(item.id))
-          .sort((a, b) => playedOf(played, b.id) - playedOf(played, a.id));
-        if (!swapMen[0]) continue;
-        current = current.filter((item) => item.id !== swapMen[0].id).concat(player);
-        continue;
-      }
-      current.push(player);
-      continue;
-    }
-    const sitPool = [...current]
-      .filter((item) => {
-        if (neededIds.includes(item.id)) return false;
-        if (player.gender === "male" && item.gender !== "male" && countMen(current) >= MAX_MEN_ON_FIELD) {
-          return false;
-        }
-        return true;
-      })
-      .sort(
-        (a, b) =>
-          Number(uniqueMustFillCover(a, current)) - Number(uniqueMustFillCover(b, current)) ||
-          playedOf(played, b.id) - playedOf(played, a.id) ||
-          a.name.localeCompare(b.name),
-      );
-    if (!sitPool[0]) continue;
-    current = current.filter((item) => item.id !== sitPool[0].id).concat(player);
-  }
-
-  return current;
+  allowUnpreferred: boolean,
+  order: FieldingPositionOrder = {},
+  history: Defense[] = [],
+): Player | null {
+  const preferred = remaining.filter((player) => covers(player, position, order));
+  const pool = preferred.length ? preferred : allowUnpreferred ? remaining : [];
+  if (!pool.length) return null;
+  const sorted = [...pool].sort(
+    (a, b) =>
+      rankOf(a, position, order) - rankOf(b, position, order) ||
+      timesAt(history, a.id, position) - timesAt(history, b.id, position) ||
+      playedOf(played, a.id) - playedOf(played, b.id) ||
+      preferredSpots(a, order).length - preferredSpots(b, order).length ||
+      a.name.localeCompare(b.name) ||
+      a.id.localeCompare(b.id),
+  );
+  return sorted[0] ?? null;
 }
 
-function mustFillCovered(selected: Player[], position: Position): boolean {
-  return selected.some((player) => covers(player, position));
+function mustFillCovered(
+  selected: Player[],
+  position: Position,
+  order: FieldingPositionOrder,
+): boolean {
+  return selected.some((player) => covers(player, position, order));
 }
 
-function uniqueMustFillCover(player: Player, selected: Player[]): boolean {
+function uniqueMustFillCover(
+  player: Player,
+  selected: Player[],
+  order: FieldingPositionOrder,
+): boolean {
   return MUST_FILL_POSITIONS.some((position) => {
-    if (!covers(player, position)) return false;
-    return !selected.some((other) => other.id !== player.id && covers(other, position));
+    if (!covers(player, position, order)) return false;
+    return !selected.some((other) => other.id !== player.id && covers(other, position, order));
   });
 }
 
@@ -299,24 +110,16 @@ function assignDefense(
   selected: Player[],
   played: Map<string, number>,
   allowUnpreferred: boolean,
-  constraints: FieldingConstraint[] = [],
-  inningIndex = 0,
+  order: FieldingPositionOrder = {},
   history: Defense[] = [],
 ): Defense | null {
-  const remainingStart = [...selected];
+  const remaining = [...selected];
   const defense = emptyDefense();
-  const remaining = placeOnly(
-    defense,
-    placeRotations(defense, remainingStart, constraints, inningIndex),
-    constraints,
-    inningIndex,
-    history,
-  );
 
   const fillGroup = (positions: Position[], unpreferred: boolean) => {
-    for (const position of sortByScarcity(positions, remaining)) {
+    for (const position of sortByScarcity(positions, remaining, order)) {
       if (defense[position]) continue;
-      const pick = pickForPosition(remaining, position, played, unpreferred, constraints);
+      const pick = pickForPosition(remaining, position, played, unpreferred, order, history);
       if (!pick) continue;
       defense[position] = pick.id;
       remaining.splice(remaining.indexOf(pick), 1);
@@ -337,7 +140,11 @@ function assignDefense(
   return defense;
 }
 
-function pickByQuota(present: Player[], played: Map<string, number>): Player[] {
+function pickByQuota(
+  present: Player[],
+  played: Map<string, number>,
+  order: FieldingPositionOrder,
+): Player[] {
   const target = Math.min(FIELD_SPOTS, present.length);
   const mustFillTarget = Math.min(MUST_FILL_POSITIONS.length, present.length);
   const selected: Player[] = [];
@@ -349,7 +156,7 @@ function pickByQuota(present: Player[], played: Map<string, number>): Player[] {
   };
 
   for (const position of MUST_FILL_POSITIONS) {
-    const coversForSpot = present.filter((player) => covers(player, position));
+    const coversForSpot = present.filter((player) => covers(player, position, order));
     if (coversForSpot.length === 1) take(coversForSpot[0]);
   }
 
@@ -389,13 +196,16 @@ function ensureMustFillCoverage(
   selected: Player[],
   present: Player[],
   played: Map<string, number>,
+  order: FieldingPositionOrder,
 ): Player[] {
   let current = [...selected];
 
   for (const position of MUST_FILL_POSITIONS) {
-    if (mustFillCovered(current, position)) continue;
+    if (mustFillCovered(current, position, order)) continue;
     const bench = sortByPlayTime(
-      present.filter((player) => !current.some((item) => item.id === player.id) && covers(player, position)),
+      present.filter(
+        (player) => !current.some((item) => item.id === player.id) && covers(player, position, order),
+      ),
       played,
     );
     if (!bench.length) continue;
@@ -409,10 +219,10 @@ function ensureMustFillCoverage(
         return true;
       })
       .sort((a, b) => {
-        const aUnique = uniqueMustFillCover(a, current) ? 1 : 0;
-        const bUnique = uniqueMustFillCover(b, current) ? 1 : 0;
-        const aFlex = a.positions.every((pos) => FLEX_POSITIONS.includes(pos)) ? 0 : 1;
-        const bFlex = b.positions.every((pos) => FLEX_POSITIONS.includes(pos)) ? 0 : 1;
+        const aUnique = uniqueMustFillCover(a, current, order) ? 1 : 0;
+        const bUnique = uniqueMustFillCover(b, current, order) ? 1 : 0;
+        const aFlex = preferredSpots(a, order).every((pos) => FLEX_POSITIONS.includes(pos)) ? 0 : 1;
+        const bFlex = preferredSpots(b, order).every((pos) => FLEX_POSITIONS.includes(pos)) ? 0 : 1;
         return (
           aUnique - bUnique ||
           aFlex - bFlex ||
@@ -431,20 +241,20 @@ function ensureMustFillCoverage(
 function assignSelected(
   selected: Player[],
   played: Map<string, number>,
-  constraints: FieldingConstraint[] = [],
-  inningIndex = 0,
+  order: FieldingPositionOrder = {},
   history: Defense[] = [],
 ): { selected: Player[]; defense: Defense | null } {
-  const preferred = assignDefense(selected, played, false, constraints, inningIndex, history);
+  const preferred = assignDefense(selected, played, false, order, history);
   if (preferred) return { selected, defense: preferred };
-  return { selected, defense: assignDefense(selected, played, true, constraints, inningIndex, history) };
+  return { selected, defense: assignDefense(selected, played, true, order, history) };
 }
 
 function fillVacancies(
   defense: Defense,
   present: Player[],
   played: Map<string, number>,
-  constraints: FieldingConstraint[] = [],
+  order: FieldingPositionOrder = {},
+  history: Defense[] = [],
 ): Defense {
   const next = { ...defense };
   const onField = new Set(Object.values(next).filter((id): id is string => Boolean(id)));
@@ -462,7 +272,7 @@ function fillVacancies(
       if (!allowMenOverCap && menCount() >= MAX_MEN_ON_FIELD) return;
       pool = men;
     }
-    const pick = pickForPosition(pool, position, played, true, constraints);
+    const pick = pickForPosition(pool, position, played, true, order, history);
     if (!pick) return;
     next[position] = pick.id;
     onField.add(pick.id);
@@ -471,6 +281,7 @@ function fillVacancies(
   for (const position of sortByScarcity(
     MUST_FILL_POSITIONS,
     present.filter((player) => !onField.has(player.id)),
+    order,
   )) {
     fillPosition(position, true);
   }
@@ -483,35 +294,29 @@ function fillVacancies(
 function buildInning(
   present: Player[],
   played: Map<string, number>,
-  constraints: FieldingConstraint[] = [],
-  inningIndex = 0,
+  order: FieldingPositionOrder = {},
   history: Defense[] = [],
 ): FieldingInning {
-  const selected = forceRotateOnField(
-    ensureMustFillCoverage(pickByQuota(present, played), present, played),
-    present,
-    constraints,
-    played,
-  );
-  const assigned = assignSelected(selected, played, constraints, inningIndex, history);
+  const selected = ensureMustFillCoverage(pickByQuota(present, played, order), present, played, order);
+  const assigned = assignSelected(selected, played, order, history);
   const defense = fillVacancies(
-    assigned.defense ??
-      assignDefense(assigned.selected, played, true, constraints, inningIndex, history) ??
-      emptyDefense(),
+    assigned.defense ?? assignDefense(assigned.selected, played, true, order, history) ?? emptyDefense(),
     present,
     played,
-    constraints,
+    order,
+    history,
   );
   const onField = new Set(Object.values(defense).filter((id): id is string => Boolean(id)));
   const bench = present.filter((player) => !onField.has(player.id)).map((player) => player.id);
   return { defense, bench };
 }
 
-export function generateFielding(roster: Player[], notes = ""): FieldingGenerateResult {
+export function generateFielding(
+  roster: Player[],
+  order: FieldingPositionOrder = {},
+): FieldingGenerateResult {
   const present = presentPlayers(roster);
   const warnings: string[] = [];
-  const parsedNotes = parseFieldingNotes(notes, roster);
-  const constraints = parsedNotes.constraints;
   const played = new Map(present.map((player) => [player.id, 0]));
 
   if (present.length === 0) {
@@ -521,7 +326,6 @@ export function generateFielding(roster: Player[], notes = ""): FieldingGenerate
         bench: [],
       })),
       warnings: ["No players are marked present this week."],
-      noteWarnings: [...parsedNotes.summaries, ...parsedNotes.warnings],
     };
   }
 
@@ -529,7 +333,7 @@ export function generateFielding(roster: Player[], notes = ""): FieldingGenerate
     warnings.push("Fewer than 3 women present — keeping 7 or fewer men on the field may not be possible.");
   }
 
-  if (present.some((player) => player.positions.length === 0)) {
+  if (present.some((player) => preferredSpots(player, order).length === 0)) {
     warnings.push("Some present players have no preferred positions and may stay on the bench.");
   }
 
@@ -540,7 +344,7 @@ export function generateFielding(roster: Player[], notes = ""): FieldingGenerate
   const innings: FieldingInning[] = [];
   const history: Defense[] = [];
   for (let i = 0; i < INNING_COUNT; i++) {
-    const inning = buildInning(present, played, constraints, i, history);
+    const inning = buildInning(present, played, order, history);
     for (const id of Object.values(inning.defense)) {
       if (id) played.set(id, playedOf(played, id) + 1);
     }
@@ -580,7 +384,7 @@ export function generateFielding(roster: Player[], notes = ""): FieldingGenerate
     warnings.push("A woman is on the bench while a fielding spot is empty.");
   }
 
-  return { innings, warnings, noteWarnings: [...parsedNotes.summaries, ...parsedNotes.warnings] };
+  return { innings, warnings };
 }
 
 export function inningsPlayed(innings: FieldingInning[], playerId: string): number {

@@ -13,7 +13,7 @@ import {
 import { parseClientState } from "./parseState";
 import { ensureIdealOrder, ensureWeekOrder, uniqueFirst } from "./batting";
 import { generateFielding } from "./fielding";
-import { clipFieldingNotes } from "./fieldingNotes";
+import { clipFieldingPositionOrder } from "./fieldingPositionOrder";
 import {
   authorizeUrl,
   exchangeCode,
@@ -188,7 +188,13 @@ export async function handleSoftballRequest(
       if (!adminPinOk(env, body.adminPin)) {
         throw new SoftballApiError(403, "Admin PIN is incorrect.");
       }
-      return json({ ok: true, fieldingLogicNotes: team.fieldingLogicNotes ?? "" });
+      return json({
+        ok: true,
+        fieldingPositionOrder: clipFieldingPositionOrder(
+          team.fieldingPositionOrder,
+          team.state.roster.map((player) => player.id),
+        ),
+      });
     }
 
     if (route === "/state" && method === "GET") {
@@ -207,8 +213,11 @@ export async function handleSoftballRequest(
       const storedLocked = team.state.idealBattingLocked !== false;
       const canEditIdeal = adminOk || storedLocked === false;
       const seed = storedIdeal.length ? storedIdeal : uniqueFirst(incoming.battingOrder);
-      if (adminOk && typeof body.fieldingLogicNotes === "string") {
-        team.fieldingLogicNotes = clipFieldingNotes(body.fieldingLogicNotes);
+      if (adminOk && "fieldingPositionOrder" in body) {
+        team.fieldingPositionOrder = clipFieldingPositionOrder(
+          body.fieldingPositionOrder,
+          incoming.roster.map((player) => player.id),
+        );
       }
       team.state = {
         ...incoming,
@@ -230,15 +239,17 @@ export async function handleSoftballRequest(
         roster: Array.isArray(body.roster) ? body.roster : team.state.roster,
       });
       const roster = parsed.roster.length ? parsed.roster : team.state.roster;
-      const notes = adminPinOk(env, body.adminPin)
-        ? clipFieldingNotes(body.fieldingLogicNotes ?? team.fieldingLogicNotes ?? "")
-        : (team.fieldingLogicNotes ?? "");
-      const result = generateFielding(roster, notes);
-      const admin = adminPinOk(env, body.adminPin);
+      const rosterIds = roster.map((player) => player.id);
+      const order = adminPinOk(env, body.adminPin)
+        ? clipFieldingPositionOrder(
+            body.fieldingPositionOrder ?? team.fieldingPositionOrder,
+            rosterIds,
+          )
+        : clipFieldingPositionOrder(team.fieldingPositionOrder, rosterIds);
+      const result = generateFielding(roster, order);
       return json({
         innings: result.innings,
         warnings: result.warnings,
-        noteWarnings: admin ? result.noteWarnings : [],
       });
     }
 

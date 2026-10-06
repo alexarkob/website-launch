@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   useDroppable,
@@ -8,7 +8,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { UnlockForm } from "./UnlockForm";
 import { useSoftballDndSensors } from "./useSoftballDndSensors";
-import { FIELDING_NOTES_MAX } from "../../lib/softball/fieldingNotes";
+import {
+  fieldingOrdersEqual,
+  seedFieldingPositionOrder,
+  type FieldingPositionOrder,
+} from "../../lib/softball/fieldingPositionOrder";
 import {
   inningsPlayed,
   menOnField,
@@ -30,12 +34,13 @@ import {
 
 interface Props {
   state: TeamState;
-  notesOpen: boolean;
-  fieldingLogicNotes: string;
-  notesLocking?: boolean;
-  notesSubmitted?: boolean;
-  onSaveNotes: (notes: string) => void | Promise<void>;
-  onLockNotes: (notes: string) => void | Promise<void>;
+  orderOpen: boolean;
+  fieldingPositionOrder: FieldingPositionOrder;
+  orderLocking?: boolean;
+  orderSubmitted?: boolean;
+  onSaveOrder: (order: FieldingPositionOrder) => void | Promise<void>;
+  onLockOrder: (order: FieldingPositionOrder) => void | Promise<void>;
+  onOrderChange?: (order: FieldingPositionOrder) => void;
   onUnlock: (adminPin: string) => Promise<void>;
   onInningsChange: (innings: FieldingInning[]) => void;
   onGenerate: () => void;
@@ -285,14 +290,212 @@ function InningBoard({
   );
 }
 
+function rankDragId(playerId: string, position: Position): string {
+  return `order:${playerId}:${position}`;
+}
+
+function parseRankDragId(value: string): { playerId: string; position: Position } | null {
+  if (!value.startsWith("order:")) return null;
+  const rest = value.slice(6);
+  const split = rest.lastIndexOf(":");
+  if (split <= 0) return null;
+  const playerId = rest.slice(0, split);
+  const position = rest.slice(split + 1);
+  if (!(POSITIONS as readonly string[]).includes(position)) return null;
+  return { playerId, position: position as Position };
+}
+
+function RankChip({
+  playerId,
+  position,
+  rank,
+  rosterPreferred,
+  onToggle,
+  onMove,
+  dragMoved,
+}: {
+  playerId: string;
+  position: Position;
+  rank: number | null;
+  rosterPreferred: boolean;
+  onToggle: () => void;
+  onMove?: (direction: -1 | 1) => void;
+  dragMoved: { current: boolean };
+}) {
+  const selected = rank !== null;
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: rankDragId(playerId, position),
+    disabled: !selected,
+  });
+  const droppable = useDroppable({
+    id: rankDragId(playerId, position),
+    disabled: !selected,
+  });
+  const setRefs = (node: HTMLButtonElement | null) => {
+    setNodeRef(node);
+    droppable.setNodeRef(node);
+  };
+  const style = selected
+    ? {
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.55 : 1,
+      }
+    : undefined;
+
+  return (
+    <button
+      ref={setRefs}
+      type="button"
+      data-pos={position}
+      style={style}
+      className={`${selected ? "is-on" : ""}${rosterPreferred ? " is-roster-pref" : ""}${droppable.isOver ? " is-over" : ""}`}
+      aria-pressed={selected}
+      aria-label={
+        selected
+          ? `${POSITION_LABELS[position]}, priority ${rank}${rosterPreferred ? ", on their roster card" : ""}. Drag to reorder, or activate to remove.`
+          : `Add ${POSITION_LABELS[position]}${rosterPreferred ? ", on their roster card" : ""}`
+      }
+      title={
+        rosterPreferred
+          ? `${POSITION_LABELS[position]} (on their roster card)`
+          : POSITION_LABELS[position]
+      }
+      {...(selected ? { ...attributes, ...listeners } : {})}
+      onClick={() => {
+        if (dragMoved.current) return;
+        onToggle();
+      }}
+      onKeyDown={(event) => {
+        if (!selected || !onMove) return;
+        if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+          event.preventDefault();
+          onMove(-1);
+        }
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+          event.preventDefault();
+          onMove(1);
+        }
+      }}
+    >
+      {selected && <small className="sb-rank">{rank}</small>}
+      {position}
+    </button>
+  );
+}
+
+function PositionOrderEditor({
+  roster,
+  draft,
+  onChange,
+}: {
+  roster: Player[];
+  draft: FieldingPositionOrder;
+  onChange: (next: FieldingPositionOrder) => void;
+}) {
+  const { sensors, autoScroll } = useSoftballDndSensors();
+  const dragMoved = useRef(false);
+  const display = seedFieldingPositionOrder(roster, draft);
+
+  function spotsFor(player: Player): Position[] {
+    return display[player.id] ?? [];
+  }
+
+  function setSpots(playerId: string, spots: Position[]) {
+    onChange({ ...draft, [playerId]: spots });
+  }
+
+  function toggle(player: Player, position: Position) {
+    const spots = spotsFor(player);
+    setSpots(
+      player.id,
+      spots.includes(position) ? spots.filter((item) => item !== position) : [...spots, position],
+    );
+  }
+
+  function move(player: Player, position: Position, direction: -1 | 1) {
+    const spots = [...spotsFor(player)];
+    const index = spots.indexOf(position);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= spots.length) return;
+    const swap = spots[index];
+    spots[index] = spots[nextIndex];
+    spots[nextIndex] = swap;
+    setSpots(player.id, spots);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const from = parseRankDragId(String(event.active.id));
+    const to = event.over ? parseRankDragId(String(event.over.id)) : null;
+    if (!from || !to || from.playerId !== to.playerId || from.position === to.position) return;
+    const player = roster.find((item) => item.id === from.playerId);
+    if (!player) return;
+    const spots = [...spotsFor(player)];
+    const fromIndex = spots.indexOf(from.position);
+    const toIndex = spots.indexOf(to.position);
+    if (fromIndex < 0 || toIndex < 0) return;
+    spots.splice(fromIndex, 1);
+    spots.splice(toIndex, 0, from.position);
+    setSpots(player.id, spots);
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      autoScroll={autoScroll}
+      onDragStart={() => {
+        dragMoved.current = false;
+      }}
+      onDragEnd={(event) => {
+        const moved = Math.abs(event.delta.x) > 4 || Math.abs(event.delta.y) > 4;
+        dragMoved.current = moved;
+        if (moved) handleDragEnd(event);
+        window.setTimeout(() => {
+          dragMoved.current = false;
+        }, 0);
+      }}
+    >
+      <ul className="sb-pos-order">
+        {roster.map((player) => {
+          const spots = spotsFor(player);
+          return (
+            <li key={player.id} className={player.present ? "" : "is-out"}>
+              <div className="sb-pos-order__name">
+                {player.name || "Unnamed"}
+                {!player.present && <span className="sb-pos-order__out">Out this week</span>}
+              </div>
+              <div className="sb-pos-row sb-pos-row--ranked">
+                {POSITIONS.map((position) => {
+                  const rankIndex = spots.indexOf(position);
+                  return (
+                    <RankChip
+                      key={position}
+                      playerId={player.id}
+                      position={position}
+                      rank={rankIndex === -1 ? null : rankIndex + 1}
+                      rosterPreferred={player.positions.includes(position)}
+                      dragMoved={dragMoved}
+                      onToggle={() => toggle(player, position)}
+                      onMove={(direction) => move(player, position, direction)}
+                    />
+                  );
+                })}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </DndContext>
+  );
+}
 export function FieldingLineups({
   state,
-  notesOpen,
-  fieldingLogicNotes,
-  notesLocking = false,
-  notesSubmitted = false,
-  onSaveNotes,
-  onLockNotes,
+  orderOpen,
+  fieldingPositionOrder,
+  orderLocking = false,
+  orderSubmitted = false,
+  onSaveOrder,
+  onLockOrder,
+  onOrderChange,
   onUnlock,
   onInningsChange,
   onGenerate,
@@ -301,12 +504,17 @@ export function FieldingLineups({
   const present = presentPlayers(state.roster);
   const target = present.length === 0 ? 0 : Math.round((INNING_COUNT * 10) / present.length);
   const [view, setView] = useState<FieldingView>(readView);
-  const [draftNotes, setDraftNotes] = useState(fieldingLogicNotes);
-  const dirty = draftNotes !== fieldingLogicNotes;
+  const [draftOrder, setDraftOrder] = useState(fieldingPositionOrder);
+  const dirty = !fieldingOrdersEqual(draftOrder, fieldingPositionOrder);
 
   useEffect(() => {
-    setDraftNotes(fieldingLogicNotes);
-  }, [fieldingLogicNotes, notesOpen]);
+    setDraftOrder(fieldingPositionOrder);
+  }, [fieldingPositionOrder, orderOpen]);
+
+  function updateDraft(next: FieldingPositionOrder) {
+    setDraftOrder(next);
+    onOrderChange?.(next);
+  }
 
   function setLayout(next: FieldingView) {
     setView(next);
@@ -319,9 +527,9 @@ export function FieldingLineups({
 
   function handleGenerate() {
     void (async () => {
-      if (notesOpen && dirty) {
+      if (orderOpen && dirty) {
         try {
-          await onSaveNotes(draftNotes);
+          await onSaveOrder(draftOrder);
         } catch {
           return;
         }
@@ -395,52 +603,47 @@ export function FieldingLineups({
       <section className="sb-admin-notes">
         <div className="sb-toolbar">
           <div>
-            <h2>Admin Lineup Notes</h2>
-            {notesOpen ? (
+            <h2>Admin Position Order</h2>
+            {orderOpen ? (
               <p className="sb-muted">
-                Only you can see these after the admin PIN. Lock to hide them and apply them to
-                lineup generation.
+                Only you can see this after the admin PIN. Rank where each player should play first.
+                An underline is a position they listed on their roster card. Lock to hide it and
+                apply it to lineup generation.
               </p>
-            ) : notesSubmitted ? (
+            ) : orderSubmitted ? (
               <p className="sb-banner sb-banner--soft">
                 Your notes have been submitted into the logic.
               </p>
             ) : (
               <p className="sb-muted">
-                Unlock with the admin PIN to add notes that nobody else can see. They steer how
+                Unlock with the admin PIN to rank positions nobody else can see. They steer how
                 lineups are generated.
               </p>
             )}
           </div>
-          {notesOpen ? (
+          {orderOpen ? (
             <button
               type="button"
               className="sb-btn sb-btn--primary"
-              disabled={notesLocking}
-              onClick={() => void onLockNotes(draftNotes).catch(() => {})}
+              disabled={orderLocking}
+              onClick={() => void onLockOrder(draftOrder).catch(() => {})}
             >
-              {notesLocking ? "Locking…" : "Lock"}
+              {orderLocking ? "Locking…" : "Lock"}
             </button>
           ) : (
             <UnlockForm inputId="sb-fielding-admin-pin" onUnlock={onUnlock} />
           )}
         </div>
-        {notesOpen && (
-          <div className="sb-admin-notes__field">
-            <label>
-              <span className="sb-sr">Admin lineup notes</span>
-              <textarea
-                value={draftNotes}
-                onChange={(event) => setDraftNotes(event.target.value.slice(0, FIELDING_NOTES_MAX))}
-                rows={5}
-                maxLength={FIELDING_NOTES_MAX}
-                placeholder={
-                  "Examples:\nIdeally Aaron, Dean, and Delanie will be in a variation across RF, LC, and 2B.\nIf Ben is playing, he should only play catcher.\nJade, Kate, and Lia should only be in LF, LC, and RF."
-                }
-              />
-            </label>
-          </div>
-        )}
+        {orderOpen &&
+          (state.roster.length === 0 ? (
+            <p className="sb-muted">Add players on the Roster tab first.</p>
+          ) : (
+            <PositionOrderEditor
+              roster={state.roster}
+              draft={draftOrder}
+              onChange={updateDraft}
+            />
+          ))}
       </section>
     </div>
   );

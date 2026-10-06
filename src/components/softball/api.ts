@@ -1,3 +1,4 @@
+import type { FieldingPositionOrder } from "../../lib/softball/fieldingPositionOrder";
 import type { ClientTeamPayload, TeamPublic, TeamState } from "../../lib/softball/types";
 
 async function parseError(res: Response): Promise<string> {
@@ -52,12 +53,12 @@ export async function loadState(): Promise<ClientTeamPayload | null> {
 
 export async function saveState(
   state: TeamState,
-  extras?: { adminPin?: string; fieldingLogicNotes?: string },
+  extras?: { adminPin?: string; fieldingPositionOrder?: FieldingPositionOrder },
 ): Promise<ClientTeamPayload> {
   const payload: Record<string, unknown> = { ...state };
   if (extras?.adminPin) payload.adminPin = extras.adminPin;
-  if (extras?.adminPin && extras.fieldingLogicNotes !== undefined) {
-    payload.fieldingLogicNotes = extras.fieldingLogicNotes;
+  if (extras?.adminPin && extras.fieldingPositionOrder !== undefined) {
+    payload.fieldingPositionOrder = extras.fieldingPositionOrder;
   }
   const res = await fetch("/api/softball/state", {
     method: "PUT",
@@ -69,7 +70,9 @@ export async function saveState(
   return (await res.json()) as ClientTeamPayload;
 }
 
-export async function verifyAdminPin(adminPin: string): Promise<{ fieldingLogicNotes: string }> {
+export async function verifyAdminPin(
+  adminPin: string,
+): Promise<{ fieldingPositionOrder: FieldingPositionOrder }> {
   const res = await fetch("/api/softball/admin", {
     method: "POST",
     credentials: "include",
@@ -77,14 +80,14 @@ export async function verifyAdminPin(adminPin: string): Promise<{ fieldingLogicN
     body: JSON.stringify({ adminPin }),
   });
   if (!res.ok) throw new Error(await parseError(res));
-  const body = (await res.json()) as { fieldingLogicNotes?: string };
-  return { fieldingLogicNotes: body.fieldingLogicNotes ?? "" };
+  const body = (await res.json()) as { fieldingPositionOrder?: FieldingPositionOrder };
+  return { fieldingPositionOrder: body.fieldingPositionOrder ?? {} };
 }
 
 export async function generateFieldingLineups(
   roster: TeamState["roster"],
-  extras?: { adminPin?: string; fieldingLogicNotes?: string },
-): Promise<{ innings: TeamState["innings"]; warnings: string[]; noteWarnings: string[] }> {
+  extras?: { adminPin?: string; fieldingPositionOrder?: FieldingPositionOrder },
+): Promise<{ innings: TeamState["innings"]; warnings: string[] }> {
   const res = await fetch("/api/softball/fielding/generate", {
     method: "POST",
     credentials: "include",
@@ -92,14 +95,13 @@ export async function generateFieldingLineups(
     body: JSON.stringify({
       roster,
       adminPin: extras?.adminPin,
-      fieldingLogicNotes: extras?.fieldingLogicNotes,
+      fieldingPositionOrder: extras?.fieldingPositionOrder,
     }),
   });
   if (!res.ok) throw new Error(await parseError(res));
   return (await res.json()) as {
     innings: TeamState["innings"];
     warnings: string[];
-    noteWarnings: string[];
   };
 }
 

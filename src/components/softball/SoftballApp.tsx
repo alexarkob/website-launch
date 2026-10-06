@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { newPlayer, syncAttendance } from "../../lib/softball/attendance";
 import { ensureWeekOrder, generateBattingOrder } from "../../lib/softball/batting";
+import {
+  seedFieldingPositionOrder,
+  type FieldingPositionOrder,
+} from "../../lib/softball/fieldingPositionOrder";
 import type { TeamPublic, TeamState } from "../../lib/softball/types";
 import { BattingOrder } from "./BattingOrder";
 import { FieldingLineups } from "./FieldingLineups";
@@ -25,8 +29,8 @@ export default function SoftballApp() {
   const [error, setError] = useState<string | null>(null);
   const [saveLabel, setSaveLabel] = useState("Saved");
   const [fieldingNotes, setFieldingNotes] = useState<string[]>([]);
-  const [fieldingLogicNotes, setFieldingLogicNotes] = useState("");
-  const fieldingLogicNotesRef = useRef("");
+  const [fieldingPositionOrder, setFieldingPositionOrder] = useState<FieldingPositionOrder>({});
+  const fieldingPositionOrderRef = useRef<FieldingPositionOrder>({});
   const skipSave = useRef(true);
   const adminPinRef = useRef<string | null>(null);
   const [canEditIdeal, setCanEditIdeal] = useState(false);
@@ -68,15 +72,15 @@ export default function SoftballApp() {
       const adminPin = adminPinRef.current ?? undefined;
       saveState(state, {
         adminPin,
-        fieldingLogicNotes: adminPin ? fieldingLogicNotesRef.current : undefined,
+        fieldingPositionOrder: adminPin ? fieldingPositionOrderRef.current : undefined,
       })
         .then(() => {
           setSaveLabel("Saved");
           if (state.idealBattingLocked) {
             adminPinRef.current = null;
             setCanEditIdeal(false);
-            fieldingLogicNotesRef.current = "";
-            setFieldingLogicNotes("");
+            fieldingPositionOrderRef.current = {};
+            setFieldingPositionOrder({});
             setNotesOpen(false);
           }
         })
@@ -105,42 +109,42 @@ export default function SoftballApp() {
     const adminPin = adminPinRef.current ?? undefined;
     return generateFieldingLineups(
       roster,
-      adminPin ? { adminPin, fieldingLogicNotes: fieldingLogicNotesRef.current } : undefined,
+      adminPin ? { adminPin, fieldingPositionOrder: fieldingPositionOrderRef.current } : undefined,
     );
   }
 
-  async function persistNotes(notes: string) {
+  async function persistPositionOrder(order: FieldingPositionOrder) {
     const adminPin = adminPinRef.current;
     if (!state || !adminPin) {
       throw new Error("Unlock with the admin PIN first.");
     }
     setSaveLabel("Saving…");
-    fieldingLogicNotesRef.current = notes;
-    await saveState(state, { adminPin, fieldingLogicNotes: notes });
+    fieldingPositionOrderRef.current = order;
+    await saveState(state, { adminPin, fieldingPositionOrder: order });
     setSaveLabel("Saved");
   }
 
-  async function handleSaveNotes(notes: string) {
+  async function handleSavePositionOrder(order: FieldingPositionOrder) {
     try {
-      await persistNotes(notes);
-      setFieldingLogicNotes(notes);
+      await persistPositionOrder(order);
+      setFieldingPositionOrder(order);
     } catch (err) {
       setSaveLabel("Save failed");
-      setError(err instanceof Error ? err.message : "Could not save notes.");
+      setError(err instanceof Error ? err.message : "Could not save position order.");
       throw err;
     }
   }
 
-  async function handleLockNotes(notes: string) {
+  async function handleLockPositionOrder(order: FieldingPositionOrder) {
     setNotesLocking(true);
     try {
-      await persistNotes(notes);
-      setFieldingLogicNotes("");
+      await persistPositionOrder(order);
+      setFieldingPositionOrder({});
       setNotesOpen(false);
       setNotesSubmitted(true);
     } catch (err) {
       setSaveLabel("Save failed");
-      setError(err instanceof Error ? err.message : "Could not lock notes.");
+      setError(err instanceof Error ? err.message : "Could not lock position order.");
       throw err;
     } finally {
       setNotesLocking(false);
@@ -151,8 +155,9 @@ export default function SoftballApp() {
     const unlocked = await verifyAdminPin(adminPin);
     adminPinRef.current = adminPin;
     skipSave.current = true;
-    fieldingLogicNotesRef.current = unlocked.fieldingLogicNotes;
-    setFieldingLogicNotes(unlocked.fieldingLogicNotes);
+    const seeded = seedFieldingPositionOrder(state?.roster ?? [], unlocked.fieldingPositionOrder);
+    fieldingPositionOrderRef.current = seeded;
+    setFieldingPositionOrder(seeded);
     setNotesOpen(true);
     setNotesSubmitted(false);
     setCanEditIdeal(true);
@@ -171,7 +176,7 @@ export default function SoftballApp() {
     if (!state) return;
     try {
       const result = await generateDefense(state.roster);
-      setFieldingNotes([...result.warnings, ...(result.noteWarnings ?? [])]);
+      setFieldingNotes([...result.warnings]);
       patchState((prev) => ({ ...prev, innings: result.innings, needsRegen: false }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not generate fielding.");
@@ -182,7 +187,7 @@ export default function SoftballApp() {
     if (!state) return;
     try {
       const result = await generateDefense(state.roster);
-      setFieldingNotes([...result.warnings, ...(result.noteWarnings ?? [])]);
+      setFieldingNotes([...result.warnings]);
       patchState((prev) => ({
         ...prev,
         battingOrder: generateBattingOrder(prev.roster, prev.idealBattingOrder),
@@ -201,8 +206,8 @@ export default function SoftballApp() {
     skipSave.current = true;
     adminPinRef.current = null;
     setCanEditIdeal(false);
-    setFieldingLogicNotes("");
-    fieldingLogicNotesRef.current = "";
+    setFieldingPositionOrder({});
+    fieldingPositionOrderRef.current = {};
     setNotesOpen(false);
     setNotesSubmitted(false);
   }
@@ -298,12 +303,15 @@ export default function SoftballApp() {
           {tab === "fielding" && (
             <FieldingLineups
               state={state}
-              notesOpen={notesOpen}
-              fieldingLogicNotes={fieldingLogicNotes}
-              notesLocking={notesLocking}
-              notesSubmitted={notesSubmitted}
-              onSaveNotes={handleSaveNotes}
-              onLockNotes={handleLockNotes}
+              orderOpen={notesOpen}
+              fieldingPositionOrder={fieldingPositionOrder}
+              orderLocking={notesLocking}
+              orderSubmitted={notesSubmitted}
+              onSaveOrder={handleSavePositionOrder}
+              onLockOrder={handleLockPositionOrder}
+              onOrderChange={(order) => {
+                fieldingPositionOrderRef.current = order;
+              }}
               onUnlock={handleAdminUnlock}
               onInningsChange={(innings) => patchState((prev) => ({ ...prev, innings }))}
               onGenerate={() => void handleGenerateFielding()}
