@@ -1,5 +1,7 @@
 import {
-  preferredSpots,
+  allowedSpots,
+  isAllowed,
+  isPriority,
   rankOf,
   type FieldingPositionOrder,
 } from "./fieldingPositionOrder";
@@ -16,7 +18,7 @@ import {
   type Position,
 } from "./types";
 
-/** Always fill these before RC/RF, even if it means an off-preference placement. */
+/** Fill these before RC/RF. Never place a player on a spot they are not allowed to play. */
 export const MUST_FILL_POSITIONS: Position[] = ["C", "P", "1B", "2B", "3B", "SS", "LF", "LC"];
 const FLEX_POSITIONS: Position[] = ["RC", "RF"];
 
@@ -41,7 +43,7 @@ function sortByPlayTime(players: Player[], played: Map<string, number>): Player[
 }
 
 function covers(player: Player, position: Position, order: FieldingPositionOrder = {}): boolean {
-  return preferredSpots(player, order).includes(position);
+  return isAllowed(player, position, order);
 }
 
 function sortByScarcity(
@@ -68,19 +70,20 @@ function pickForPosition(
   remaining: Player[],
   position: Position,
   played: Map<string, number>,
-  allowUnpreferred: boolean,
+  allowNonPriority: boolean,
   order: FieldingPositionOrder = {},
   history: Defense[] = [],
 ): Player | null {
-  const preferred = remaining.filter((player) => covers(player, position, order));
-  const pool = preferred.length ? preferred : allowUnpreferred ? remaining : [];
+  const pool = remaining.filter((player) =>
+    allowNonPriority ? isAllowed(player, position, order) : isPriority(player, position, order),
+  );
   if (!pool.length) return null;
   const sorted = [...pool].sort(
     (a, b) =>
       rankOf(a, position, order) - rankOf(b, position, order) ||
       timesAt(history, a.id, position) - timesAt(history, b.id, position) ||
       playedOf(played, a.id) - playedOf(played, b.id) ||
-      preferredSpots(a, order).length - preferredSpots(b, order).length ||
+      allowedSpots(a, order).length - allowedSpots(b, order).length ||
       a.name.localeCompare(b.name) ||
       a.id.localeCompare(b.id),
   );
@@ -221,8 +224,8 @@ function ensureMustFillCoverage(
       .sort((a, b) => {
         const aUnique = uniqueMustFillCover(a, current, order) ? 1 : 0;
         const bUnique = uniqueMustFillCover(b, current, order) ? 1 : 0;
-        const aFlex = preferredSpots(a, order).every((pos) => FLEX_POSITIONS.includes(pos)) ? 0 : 1;
-        const bFlex = preferredSpots(b, order).every((pos) => FLEX_POSITIONS.includes(pos)) ? 0 : 1;
+        const aFlex = allowedSpots(a, order).every((pos) => FLEX_POSITIONS.includes(pos)) ? 0 : 1;
+        const bFlex = allowedSpots(b, order).every((pos) => FLEX_POSITIONS.includes(pos)) ? 0 : 1;
         return (
           aUnique - bUnique ||
           aFlex - bFlex ||
@@ -333,8 +336,8 @@ export function generateFielding(
     warnings.push("Fewer than 3 women present — keeping 7 or fewer men on the field may not be possible.");
   }
 
-  if (present.some((player) => preferredSpots(player, order).length === 0)) {
-    warnings.push("Some present players have no preferred positions and may stay on the bench.");
+  if (present.some((player) => allowedSpots(player, order).length === 0)) {
+    warnings.push("Some present players have no allowed positions and may stay on the bench.");
   }
 
   if (present.length < FIELD_SPOTS) {
@@ -362,7 +365,7 @@ export function generateFielding(
     counts.length ? Math.max(...counts) - Math.min(...counts) : 0;
   if (spread(menCounts) > 1 || spread(womenCounts) > 1) {
     warnings.push(
-      "Playing time is uneven within a gender. Preferred-position limits may have blocked a fairer rotation.",
+      "Playing time is uneven within a gender. Allowed-position limits may have blocked a fairer rotation.",
     );
   }
 

@@ -9,6 +9,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { UnlockForm } from "./UnlockForm";
 import { useSoftballDndSensors } from "./useSoftballDndSensors";
 import {
+  PRIORITY_LIMIT,
   fieldingOrdersEqual,
   seedFieldingPositionOrder,
   type FieldingPositionOrder,
@@ -308,7 +309,8 @@ function parseRankDragId(value: string): { playerId: string; position: Position 
 function RankChip({
   playerId,
   position,
-  rank,
+  allowed,
+  priority,
   rosterPreferred,
   onToggle,
   onMove,
@@ -316,13 +318,14 @@ function RankChip({
 }: {
   playerId: string;
   position: Position;
-  rank: number | null;
+  allowed: boolean;
+  priority: number | null;
   rosterPreferred: boolean;
   onToggle: () => void;
   onMove?: (direction: -1 | 1) => void;
   dragMoved: { current: boolean };
 }) {
-  const selected = rank !== null;
+  const selected = allowed;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: rankDragId(playerId, position),
     disabled: !selected,
@@ -348,12 +351,12 @@ function RankChip({
       type="button"
       data-pos={position}
       style={style}
-      className={`${selected ? "is-on" : ""}${rosterPreferred ? " is-roster-pref" : ""}${droppable.isOver ? " is-over" : ""}`}
+      className={`${selected ? "is-on" : ""}${priority ? " is-priority" : ""}${rosterPreferred ? " is-roster-pref" : ""}${droppable.isOver ? " is-over" : ""}`}
       aria-pressed={selected}
       aria-label={
         selected
-          ? `${POSITION_LABELS[position]}, priority ${rank}${rosterPreferred ? ", on their roster card" : ""}. Drag to reorder, or activate to remove.`
-          : `Add ${POSITION_LABELS[position]}${rosterPreferred ? ", on their roster card" : ""}`
+          ? `${POSITION_LABELS[position]}${priority ? `, priority ${priority}` : ", allowed"}${rosterPreferred ? ", on their roster card" : ""}. Drag to reorder, or activate to remove.`
+          : `Not available at ${POSITION_LABELS[position]}${rosterPreferred ? ", on their roster card" : ""}. Activate to allow.`
       }
       title={
         rosterPreferred
@@ -377,7 +380,7 @@ function RankChip({
         }
       }}
     >
-      {selected && <small className="sb-rank">{rank}</small>}
+      {priority ? <small className="sb-rank">{priority}</small> : null}
       {position}
     </button>
   );
@@ -471,7 +474,10 @@ function PositionOrderEditor({
                       key={position}
                       playerId={player.id}
                       position={position}
-                      rank={rankIndex === -1 ? null : rankIndex + 1}
+                      allowed={rankIndex !== -1}
+                      priority={
+                        rankIndex >= 0 && rankIndex < PRIORITY_LIMIT ? rankIndex + 1 : null
+                      }
                       rosterPreferred={player.positions.includes(position)}
                       dragMoved={dragMoved}
                       onToggle={() => toggle(player, position)}
@@ -606,9 +612,10 @@ export function FieldingLineups({
             <h2>Admin Position Order</h2>
             {orderOpen ? (
               <p className="sb-muted">
-                Only you can see this after the admin PIN. Rank where each player should play first.
-                An underline is a position they listed on their roster card. Lock to hide it and
-                apply it to lineup generation.
+                Only you can see this after the admin PIN. Tap every position they may play; the
+                first three are priorities. Generation tries those first and will not put them on
+                an unmarked spot. An underline is a position they listed on their roster card. Lock
+                to hide it and apply it to lineup generation.
               </p>
             ) : orderSubmitted ? (
               <p className="sb-banner sb-banner--soft">
@@ -616,8 +623,8 @@ export function FieldingLineups({
               </p>
             ) : (
               <p className="sb-muted">
-                Unlock with the admin PIN to rank positions nobody else can see. They steer how
-                lineups are generated.
+                Unlock with the admin PIN to choose allowed spots and a top-3 priority. Nobody else
+                can see this. It steers how lineups are generated.
               </p>
             )}
           </div>
