@@ -411,7 +411,7 @@ html[data-sb-theme="dark"] {
 
 .sb-pos-row--ranked {
   flex-wrap: wrap;
-  padding-bottom: 0.35rem;
+  padding: 0.35rem 0.4rem 0.4rem 0;
 }
 
 .sb-pos-row--ranked button {
@@ -429,6 +429,7 @@ html[data-sb-theme="dark"] {
   font-size: 0.68rem;
   font-weight: 700;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .sb-pos-row--ranked button.is-on {
@@ -668,6 +669,11 @@ html[data-sb-theme="dark"] {
   display: flex;
   flex-wrap: nowrap;
   gap: 0.2rem;
+}
+
+.sb-pos-row.sb-pos-row--ranked {
+  flex-wrap: wrap;
+  gap: 0.32rem 0.28rem;
 }
 
 .sb-pos-row label,
@@ -1497,10 +1503,26 @@ a.sb-tile__song span {
     align-items: start;
   }
 
+  .sb-pos-row.sb-pos-row--ranked {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.4rem 0.32rem;
+    padding: 0.45rem 0.2rem 0.45rem 0;
+    width: 100%;
+    min-width: 0;
+  }
+
   .sb-pos-row--ranked button {
-    min-width: 2.4rem;
-    min-height: 2.2rem;
-    font-size: 0.75rem;
+    min-width: 0;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.35rem 0.12rem;
+    font-size: 0.72rem;
+  }
+
+  .sb-pos-row--ranked .sb-rank {
+    right: 0;
+    top: -0.32rem;
   }
 
   .sb-tile {
